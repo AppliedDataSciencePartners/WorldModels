@@ -35,7 +35,7 @@ def main(args):
             t = 0
             obs_sequence = []
             action_sequence = []
-            while t < timesteps:
+            while t < time_steps:
                 t = t + 1
                 
                 action = config.generate_data_action(t, action)
