@@ -11,16 +11,22 @@ import argparse
 
 
 def main(args):
+
+
+    total_episodes = args.total_episodes
+    start_batch = args.start_batch
+    time_steps = args.time_steps
+
     obs_data = []
     action_data = []
 
-    env = make_env(args.env_name)
+    env = make_env(env_name)
     s = 0
-    batch = args.start_batch
+    batch = start_batch
 
-    while s < args.total_episodes:
+    while s < total_episodes:
 
-        for i_episode in range(args.total_episodes):
+        for i_episode in range(total_episodes):
             print('-----')
             observation = env.reset()
             env.render()
@@ -29,7 +35,7 @@ def main(args):
             t = 0
             obs_sequence = []
             action_sequence = []
-            while t < args.timesteps:
+            while t < timesteps:
                 t = t + 1
                 
                 action = config.generate_data_action(t, action)
