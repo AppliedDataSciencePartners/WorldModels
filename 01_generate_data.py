@@ -59,7 +59,7 @@ def main(args):
 
 if __name__ == "__main__":
   parser = argparse.ArgumentParser(description=('Create new training data'))
-  parser.add_argument('--env_name', type=str, default = 'car_racing', help='name of environment')
+  parser.add_argument('env_name', type=str, help='name of environment')
   parser.add_argument('--total_episodes', type=int, default = 200, help='total number of episodes to generate')
   parser.add_argument('--start_batch', type=int, default = 0, help='start_batch number')
   parser.add_argument('--time_steps', type=int, default = 300, help='how many timesteps at start of episode?')
