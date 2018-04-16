@@ -12,7 +12,7 @@ import argparse
 
 def main(args):
 
-
+    env_name = args.env_name
     total_episodes = args.total_episodes
     start_batch = args.start_batch
     time_steps = args.time_steps
