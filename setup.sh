@@ -7,7 +7,7 @@ export WORKON_HOME=~/.virtualenvs
 source /usr/local/bin/virtualenvwrapper.sh
 mkvirtualenv --python=/usr/bin/python3 worldmodels
 
-sudo apt-get install cmake swig python3-dev zlib1g-dev libopenmpi-dev python-opengl mpich xvfb xserver-xephyr vnc4server
+sudo apt-get install cmake swig python3-dev zlib1g-dev python-opengl mpich libopenmpi-dev xvfb xserver-xephyr vnc4server 
 
 cd WorldModels
 pip install -r requirements.txt 

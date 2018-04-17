@@ -1,3 +1,6 @@
+#xvfb-run -s "-screen 0 1400x900x24" python model.py car_racing
+
+
 import numpy as np
 import random
 import json

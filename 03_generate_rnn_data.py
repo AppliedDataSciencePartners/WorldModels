@@ -1,4 +1,4 @@
-#python generate_rnn_data.py --max_batch 2
+#python 03_generate_rnn_data.py --max_batch 0
 
 from vae.arch import VAE
 import argparse

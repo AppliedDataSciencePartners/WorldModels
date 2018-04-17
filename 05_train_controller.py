@@ -1,7 +1,7 @@
-#python train_controller.py car_racing -n 8 -t 4 --max_length 1000
-#python train_controller.py car_racing -e 16 -n 64 -t 4 --max_length 1000
-#xvfb-run -s "-screen 0 1400x900x24" python train_controller.py car_racing -n 16 -t 4 -e 16 --max_length 1000
-#xvfb-run -s "-screen 0 1400x900x24" python train_controller.py car_racing -n 16 -t 1 -e 1 --max_length 1000
+#python 05_train_controller.py car_racing -n 8 -t 4 --max_length 1000
+#python 05_train_controller.py car_racing -e 16 -n 64 -t 4 --max_length 1000
+#xvfb-run -s "-screen 0 1400x900x24" python 05_train_controller.py car_racing -n 16 -t 4 -e 16 --max_length 1000
+#xvfb-run -s "-screen 0 1400x900x24" python 05_train_controller.py car_racing -n 16 -t 1 -e 1 --max_length 1000
 
 from mpi4py import MPI
 import numpy as np

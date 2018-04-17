@@ -1,3 +1,5 @@
+#python 02_train_vae.py --new_model
+
 from vae.arch import VAE
 import argparse
 import numpy as np

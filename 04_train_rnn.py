@@ -1,4 +1,4 @@
-#python generate_
+#python 04_train_rnn.py --max_batch 0
 
 from rnn.arch import RNN
 import argparse
