@@ -1,6 +1,6 @@
 #python 05_train_controller.py car_racing -n 8 -t 4 --max_length 1000
 #python 05_train_controller.py car_racing -e 16 -n 64 -t 4 --max_length 1000
-#xvfb-run -s "-screen 0 1400x900x24" python 05_train_controller.py car_racing -n 16 -t 4 -e 16 --max_length 1000
+#xvfb-run -s "-screen 0 1400x900x24" python 05_train_controller.py car_racing -n 16 -t 2 -e 16 --max_length 1000
 #xvfb-run -s "-screen 0 1400x900x24" python 05_train_controller.py car_racing -n 16 -t 1 -e 1 --max_length 1000
 
 from mpi4py import MPI
@@ -233,8 +233,6 @@ def send_packets_to_slaves(packet_list):
   assert len(packet_list) == num_worker-1
   for i in range(1, num_worker):
     packet = packet_list[i-1]
-    print(len(packet))
-    print(SOLUTION_PACKET_SIZE)
     assert(len(packet) == SOLUTION_PACKET_SIZE)
     comm.Send(packet, dest=i)
 
