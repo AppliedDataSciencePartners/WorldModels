@@ -210,8 +210,7 @@ def slave():
   packet = np.empty(SOLUTION_PACKET_SIZE, dtype=np.int32)
   while 1:
     comm.Recv(packet, source=0)
-    print(len(packet))
-    print(SOLUTION_PACKET_SIZE)
+
     assert(len(packet) == SOLUTION_PACKET_SIZE)
     solutions = decode_solution_packet(packet)
     results = []
@@ -234,6 +233,8 @@ def send_packets_to_slaves(packet_list):
   assert len(packet_list) == num_worker-1
   for i in range(1, num_worker):
     packet = packet_list[i-1]
+    print(len(packet))
+    print(SOLUTION_PACKET_SIZE)
     assert(len(packet) == SOLUTION_PACKET_SIZE)
     comm.Send(packet, dest=i)
 
