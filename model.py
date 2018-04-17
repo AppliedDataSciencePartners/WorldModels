@@ -1,4 +1,5 @@
-#python model.py car_racing --filename ./log/car_racing.cma.4.32.best.json --render_mode --record_video
+#python model.py car_racing --filename ./controller/car_racing.cma.4.32.best.json --render_mode --record_video
+#xvfb-run -a -s "-screen 0 1400x900x24" python model.py car_racing --filename ./controller/car_racing.cma.4.32.best.json --render_mode --record_video
 
 
 import numpy as np
@@ -280,7 +281,7 @@ def main(args):
 
       reward, steps_taken = simulate(model, train_mode=False, render_mode=False, num_episode=1, max_len = max_length, generate_data_mode = False)
       total_reward += reward[0]
-      print("reward =", reward[0])
+      print("episode" , i, "reward =", reward[0])
     print("seed", the_seed, "average_reward", total_reward/100)
   else:
     if record_video:
