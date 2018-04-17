@@ -1,4 +1,4 @@
-#xvfb-run -s "-screen 0 1400x900x24" python generate_data.py 200 2
+#xvfb-run -s "-screen 0 1400x900x24" python generate_data.py --total_episodes 200 --start_batch 0 --time_steps 300
 
 #import gym
 import numpy as np

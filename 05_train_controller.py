@@ -439,8 +439,6 @@ if __name__ == "__main__":
   parser.add_argument('gamename', type=str, help='car_racing etc.')
   parser.add_argument('-o', '--optimizer', type=str, help='ses, pepg, openes, ga, cma.', default='cma')
   parser.add_argument('--init_opt', type=str, default = '', help='which optimiser pickle file to initialise with')
-  #parser.add_argument('--vae_version', type=str, default = 'v1', help='which vae version to use')
-  #parser.add_argument('--rnn_version', type=str, default = 'v1', help='which rnn version to use')
   parser.add_argument('-e', '--num_episode', type=int, default=1, help='num episodes per trial (controller)')
   parser.add_argument('-n', '--num_worker', type=int, default=4)
   parser.add_argument('-t', '--num_worker_trial', type=int, help='trials per worker', default=1)
