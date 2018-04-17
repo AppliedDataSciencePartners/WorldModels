@@ -1,7 +1,7 @@
 #python 05_train_controller.py car_racing -n 8 -t 4 --max_length 1000
 #python 05_train_controller.py car_racing -e 16 -n 64 -t 4 --max_length 1000
-#xvfb-run -s "-screen 0 1400x900x24" python 05_train_controller.py car_racing -n 16 -t 2 -e 16 --max_length 1000
-#xvfb-run -s "-screen 0 1400x900x24" python 05_train_controller.py car_racing -n 16 -t 1 -e 1 --max_length 1000
+#xvfb-run -a -s "-screen 0 1400x900x24" python 05_train_controller.py car_racing -n 16 -t 2 -e 4 --max_length 1000
+#xvfb-run -a -s "-screen 0 1400x900x24" python 05_train_controller.py car_racing -n 16 -t 1 -e 1 --max_length 1000
 
 from mpi4py import MPI
 import numpy as np
@@ -281,6 +281,7 @@ def master():
   sprint("population", es.popsize)
   sprint("num_worker", num_worker)
   sprint("num_worker_trial", num_worker_trial)
+  sprint("num_episode", num_episode)
   sprint("max_length", max_length)
 
   sys.stdout.flush()
@@ -290,7 +291,7 @@ def master():
   filename = filebase+'.json'
   filename_log = filebase+'.log.json'
   filename_hist = filebase+'.hist.json'
-  filename_best = filebase+'.best.json'
+  filename_best = controller_filebase+'.best.json'
   filename_es = controller_filebase+'.es.pk'
 
   model.make_env()

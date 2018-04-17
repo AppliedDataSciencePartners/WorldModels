@@ -1,4 +1,4 @@
-#xvfb-run -s "-screen 0 1400x900x24" python model.py car_racing
+#python model.py car_racing --filename ./log/car_racing.cma.4.32.best.json --render_mode --record_video
 
 
 import numpy as np
