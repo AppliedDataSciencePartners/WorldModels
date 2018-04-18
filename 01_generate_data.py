@@ -3,7 +3,6 @@
 import numpy as np
 import random
 import config
-import matplotlib.pyplot as plt
 
 from env import make_env
 
