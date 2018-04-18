@@ -1,4 +1,4 @@
-#xvfb-run -s "-screen 0 1400x900x24" python generate_data.py --total_episodes 200 --start_batch 0 --time_steps 300
+#xvfb-run -s "-screen 0 1400x900x24" python generate_data.py car-racing --total_episodes 200 --start_batch 0 --time_steps 300
 
 #import gym
 import numpy as np
@@ -26,7 +26,7 @@ def main(args):
 
     while s < total_episodes:
 
-        for i_episode in range(total_episodes):
+        for i_episode in range(200):
             print('-----')
             observation = env.reset()
             env.render()
