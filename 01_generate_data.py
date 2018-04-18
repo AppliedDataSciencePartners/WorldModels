@@ -3,6 +3,7 @@
 import numpy as np
 import random
 import config
+#import matplotlib.pyplot as plt
 
 from env import make_env
 
@@ -15,6 +16,7 @@ def main(args):
     start_batch = args.start_batch
     time_steps = args.time_steps
     render = args.render
+    batch_size = args.batch_size
 
     env = make_env(env_name)
     s = 0
@@ -25,10 +27,13 @@ def main(args):
         obs_data = []
         action_data = []
 
-        for i_episode in range(200):
+        for i_episode in range(batch_size):
             print('-----')
             observation = env.reset()
             observation = config.adjust_obs(observation)
+
+            # plt.imshow(observation)
+            # plt.show()
 
             env.render()
             done = False
@@ -37,7 +42,7 @@ def main(args):
             obs_sequence = []
             action_sequence = []
 
-            while t < time_steps and not done:
+            while t < time_steps: #and not done:
                 t = t + 1
                 
                 action = config.generate_data_action(t, action)
@@ -72,6 +77,8 @@ if __name__ == "__main__":
   parser.add_argument('--start_batch', type=int, default = 0, help='start_batch number')
   parser.add_argument('--time_steps', type=int, default = 300, help='how many timesteps at start of episode?')
   parser.add_argument('--render', action='store_true', help='render the env as data is generated')
+  parser.add_argument('--batch_size', type=int, default = 200, help='how many episodes in a batch (one file)')
+  200
 
 
   args = parser.parse_args()
