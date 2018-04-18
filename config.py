@@ -4,7 +4,7 @@ import random
 def generate_data_action(t, current_action):
 #     a = env.action_space.sample()
 #     return a
-    if t < 200:
+    if t < 60:
         return np.array([0,1,0])
     
     if t % 5 > 0:

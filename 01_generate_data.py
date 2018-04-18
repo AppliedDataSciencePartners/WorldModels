@@ -30,9 +30,6 @@ def main(args):
             print('-----')
             observation = env.reset()
             observation = config.adjust_obs(observation)
-            if render:
-                plt.imshow(observation)
-                plt.show()
 
             env.render()
             done = False
