@@ -223,7 +223,7 @@ def simulate(model, train_mode=False, render_mode=True, num_episode=5, seed=-1, 
         action = model.get_action(controller_obs, t=t, mean_mode=False)
 
       obs, reward, done, info = model.env.step(action)
-      obs = obs.astype('float32') / 255.
+      obs = config.adjust_obs(obs)
 
       input_to_rnn = [np.array([[np.concatenate([vae_encoded_obs, action])]]),np.array([model.hidden]),np.array([model.cell_values])]
       h, c = model.rnn.forward.predict(input_to_rnn)
