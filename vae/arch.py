@@ -91,10 +91,10 @@ class VAE():
 
         def vae_r_loss(y_true, y_pred):
 
-            return K.sum(K.square(y_true - y_pred), axis = [1,2,3])
+            return K.mean(K.square(y_true - y_pred), axis = [1,2,3])
 
         def vae_kl_loss(y_true, y_pred):
-            return - 0.5 * K.sum(1 + vae_z_log_var - K.square(vae_z_mean) - K.exp(vae_z_log_var), axis = -1)
+            return - 0.5 * K.mean(1 + vae_z_log_var - K.square(vae_z_mean) - K.exp(vae_z_log_var), axis = -1)
 
         def vae_loss(y_true, y_pred):
             return vae_r_loss(y_true, y_pred) + vae_kl_loss(y_true, y_pred)
