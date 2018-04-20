@@ -471,7 +471,7 @@ def mpi_fork(n):
 if __name__ == "__main__":
   parser = argparse.ArgumentParser(description=('Train policy on OpenAI Gym environment '
                                                 'using pepg, ses, openes, ga, cma'))
-  parser.add_argument('env_name', type=str, help='car_racing etc - this is only used for labelling files etc, the actual environments are defined in config.py')
+  parser.add_argument('env_name', type=str, help='car_racing etc - this is only used for labelling files etc, the actual environments are defined in train_envs in config.py')
   parser.add_argument('-o', '--optimizer', type=str, help='ses, pepg, openes, ga, cma.', default='cma')
   parser.add_argument('--init_opt', type=str, default = '', help='which optimiser pickle file to initialise with')
   parser.add_argument('-e', '--num_episode', type=int, default=1, help='num episodes per trial (controller)')

@@ -248,7 +248,7 @@ def main(args):
 
   global RENDER_DELAY
 
-  gamename = args.gamename
+  env_name = args.env_name
   filename = args.filename
   the_seed = args.seed
   final_mode = args.final_mode
@@ -258,15 +258,15 @@ def main(args):
   max_length = args.max_length
   
 
-  if gamename.startswith("bullet"):
+  if env_name.startswith("bullet"):
     RENDER_DELAY = True
 
   use_model = False
 
-  model = make_model(gamename)
+  model = make_model()
   print('model size', model.param_count)
 
-  model.make_env(render_mode=render_mode)
+  model.make_env(env_name, render_mode=render_mode)
 
   if len(filename) > 0:
     model.load_model(filename)
@@ -287,7 +287,7 @@ def main(args):
     print("seed", the_seed, "average_reward", total_reward/100)
   else:
     if record_video:
-      model.env = Monitor(model.env, directory='./videos/'+gamename,video_callable=lambda episode_id: True, write_upon_reset=True, force=True)
+      model.env = Monitor(model.env, directory='./videos',video_callable=lambda episode_id: True, write_upon_reset=True, force=True)
     while(5):
       reward, steps_taken = simulate(model, train_mode=False, render_mode=render_mode, num_episode=1, max_len = max_length, generate_data_mode = generate_data_mode)
       print ("terminal reward", reward, "average steps taken", np.mean(steps_taken)+1)
@@ -295,7 +295,7 @@ def main(args):
 
 if __name__ == "__main__":
   parser = argparse.ArgumentParser(description=('View a trained agent'))
-  parser.add_argument('gamename', type=str, help='car_racing etc.')
+  parser.add_argument('env_name', type=str, help='car_racing etc - this is only used for labelling files etc, the actual environments are defined in train_envs in config.py')
   parser.add_argument('--filename', type=str, default='', help='Path to the trained model json file')
   parser.add_argument('--seed', type = int, default = 111, help='which seed?')
   parser.add_argument('--final_mode', action='store_true', help='select this to test a given controller over 100 trials')
