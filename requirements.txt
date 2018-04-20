@@ -1,11 +1,9 @@
-gym==0.10.5
 absl-py==0.1.13
 appnope==0.1.0
 astor==0.6.2
 atari-py==0.1.1
 bleach==1.5.0
 Box2D==2.3.2
-
 certifi==2018.1.18
 cffi==1.11.5
 chardet==3.0.4
@@ -18,6 +16,7 @@ gast==0.2.0
 glfw==1.6.0
 graphviz==0.8.2
 grpcio==1.10.0
+gym==0.10.5
 h5py==2.7.1
 html5lib==0.9999999
 idna==2.6
@@ -35,6 +34,7 @@ matplotlib==2.2.2
 mpi4py==3.0.0
 mujoco-py==0.5.7
 numpy==1.14.2
+opencv-python==3.4.0.12
 parso==0.1.1
 pexpect==4.4.0
 pickleshare==0.7.4
@@ -64,4 +64,5 @@ tornado==5.0.1
 traitlets==4.3.2
 urllib3==1.22
 wcwidth==0.1.7
+websocket-client==0.47.0
 Werkzeug==0.14.1
