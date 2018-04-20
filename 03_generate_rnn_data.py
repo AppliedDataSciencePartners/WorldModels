@@ -1,7 +1,9 @@
-#python 03_generate_rnn_data.py --max_batch 0
+#python 03_generate_rnn_data.py
 
 from vae.arch import VAE
 import argparse
+import config
+import numpy as np
 
 def main(args):
 
@@ -9,15 +11,39 @@ def main(args):
     max_batch = args.max_batch
 
     vae = VAE()
+
+    first_item = True
+
     try:
       vae.set_weights('./vae/weights.h5')
     except:
       print("./vae/weights.h5 does not exist - ensure you have run 02_train_vae.py first")
       raise
 
-    for i in range(start_batch, max_batch + 1):
-        print('Generating batch {}...'.format(i))
-        vae.generate_rnn_data(i)
+    for batch_num in range(start_batch, max_batch + 1):
+      print('Generating batch {}...'.format(batch_num))
+
+      for env_name in config.train_envs:
+        try:
+          new_obs_data = np.load('./data/obs_data_' + env_name + '_'  + str(batch_num) + '.npy') 
+          new_action_data = np.load('./data/action_data_' + env_name + '_'  + str(batch_num) + '.npy')
+          if first_item:
+            obs_data = new_obs_data
+            action_data = new_action_data
+            first_item = False
+          else:
+            obs_data = np.concatenate([obs_data, new_obs_data])
+            action_data = np.concatenate([action_data, new_action_data])
+          print('Found {}...current data size = {} episodes'.format(env_name, len(obs_data)))
+        except:
+          pass
+      
+      if first_item == False:
+        rnn_input, rnn_output = vae.generate_rnn_data(obs_data, action_data)
+        np.save('./data/rnn_input_' + str(batch_num), rnn_input)
+        np.save('./data/rnn_output_' + str(batch_num), rnn_output)
+      else:
+        print('no data found for batch number {}'.format(batch_num))
 
 if __name__ == "__main__":
   parser = argparse.ArgumentParser(description=('Train VAE'))

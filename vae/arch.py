@@ -124,17 +124,7 @@ class VAE():
     def save_weights(self, filepath):
         self.model.save_weights(filepath)
 
-
-
-
-
-    def generate_rnn_data(self, batch_num):
-
-        obs_data = np.load('./data/obs_data_' + str(batch_num) + '.npy') 
-        action_data = np.load('./data/action_data_' + str(batch_num) + '.npy')
-
-        #obs_data = np.load('./archive/data/obs_data.npy')
-        #action_data = np.load('./archive/data/action_data.npy')
+    def generate_rnn_data(self, obs_data, action_data):
 
         rnn_input = []
         rnn_output = []
@@ -148,8 +138,7 @@ class VAE():
         rnn_input = np.array(rnn_input)
         rnn_output = np.array(rnn_output)
 
-        np.save('./data/rnn_input_' + str(batch_num), rnn_input)
-        np.save('./data/rnn_output_' + str(batch_num), rnn_output)
+        return (rnn_input, rnn_output)
     
 
 

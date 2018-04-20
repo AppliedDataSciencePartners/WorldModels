@@ -1,4 +1,4 @@
-#xvfb-run -s "-screen 0 1400x900x24" python generate_data.py car-racing --total_episodes 200 --start_batch 0 --time_steps 300
+#xvfb-run -s "-screen 0 1400x900x24" python 01_generate_data.py car_racing --total_episodes 200 --start_batch 0 --time_steps 300
 
 import numpy as np
 import random
@@ -21,6 +21,8 @@ def main(args):
     env = make_env(env_name)
     s = 0
     batch = start_batch
+
+    batch_size = min(batch_size, total_episodes)
 
 
     while s < total_episodes:
@@ -65,8 +67,8 @@ def main(args):
             s = s + 1
 
         print("Saving dataset for batch {}".format(batch))
-        np.save('./data/obs_data_' + str(batch), obs_data)
-        np.save('./data/action_data_' + str(batch), action_data)
+        np.save('./data/obs_data_' + env_name + '_' + str(batch), obs_data)
+        np.save('./data/action_data_' + env_name + '_' + str(batch), action_data)
 
         batch = batch + 1
 
@@ -78,11 +80,6 @@ if __name__ == "__main__":
   parser.add_argument('--time_steps', type=int, default = 300, help='how many timesteps at start of episode?')
   parser.add_argument('--render', action='store_true', help='render the env as data is generated')
   parser.add_argument('--batch_size', type=int, default = 200, help='how many episodes in a batch (one file)')
-  200
-
 
   args = parser.parse_args()
   main(args)
-
-
-  config

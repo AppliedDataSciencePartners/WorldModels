@@ -26,7 +26,7 @@ RENDER_DELAY = False
 record_video = False
 MEAN_MODE = False
 
-def make_model(env_name):
+def make_model():
 
   vae = VAE()
   vae.set_weights('./vae/weights.h5')
@@ -36,13 +36,12 @@ def make_model(env_name):
 
   controller = Controller()
 
-  model = Model(controller, vae, rnn, env_name)
+  model = Model(controller, vae, rnn)
   return model
 
 class Model:
-  def __init__(self, controller, vae, rnn, env_name):
+  def __init__(self, controller, vae, rnn):
 
-    self.env_name = env_name
     self.input_size = vae.input_dim
     self.vae = vae
     self.rnn = rnn
@@ -88,9 +87,10 @@ class Model:
 
     self.render_mode = False
 
-  def make_env(self, seed=-1, render_mode=False):
+  def make_env(self, env_name, seed=-1, render_mode=False):
     self.render_mode = render_mode
-    self.env = make_env(self.env_name, seed=seed, render_mode=render_mode)
+    self.env_name = env_name
+    self.env = make_env(env_name, seed=seed, render_mode=render_mode)
 
 
   def get_action(self, x, t=0, mean_mode=False):
@@ -237,8 +237,10 @@ def simulate(model, train_mode=False, render_mode=True, num_episode=5, seed=-1, 
 
     if render_mode:
       print("reward", total_reward, "timesteps", t)
+    
     reward_list.append(total_reward)
     t_list.append(t)
+    model.env.close()
 
   return reward_list, t_list
 

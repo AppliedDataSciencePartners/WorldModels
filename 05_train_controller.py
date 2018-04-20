@@ -1,7 +1,5 @@
-#python 05_train_controller.py car_racing -n 8 -t 4 --max_length 1000
-#python 05_train_controller.py car_racing -e 16 -n 64 -t 4 --max_length 1000
+#python 05_train_controller.py car_racing -e 1 -n 4 -t 1 --max_length 1000
 #xvfb-run -a -s "-screen 0 1400x900x24" python 05_train_controller.py car_racing -n 16 -t 2 -e 4 --max_length 1000
-#xvfb-run -a -s "-screen 0 1400x900x24" python 05_train_controller.py car_racing -n 16 -t 1 -e 1 --max_length 1000
 
 from mpi4py import MPI
 import numpy as np
@@ -11,13 +9,17 @@ import subprocess
 import sys
 
 import pickle
+import random
+
 
 from model import make_model, simulate
 from es import CMAES, SimpleGA, OpenES, PEPG
 import argparse
 import time
 
-### ES related code
+import config
+
+### ES related code - parameters are just dummy values so do not edit here. Instead, set in the args to the script.
 num_episode = 1
 eval_steps = 25 # evaluate every N_eval steps
 retrain_mode = True
@@ -28,7 +30,7 @@ num_worker_trial = 16
 
 population = num_worker * num_worker_trial
 
-gamename = 'invalid_gamename'
+env_name = 'invalid_env_name'
 optimizer = 'cma'
 antithetic = True
 batch_mode = 'mean'
@@ -62,10 +64,10 @@ RESULT_PACKET_SIZE = 4*num_worker_trial
 def initialize_settings(sigma_init=0.1, sigma_decay=0.9999, init_opt = ''):
   global population, filebase, controller_filebase, model, num_params, es, PRECISION, SOLUTION_PACKET_SIZE, RESULT_PACKET_SIZE
   population = num_worker * num_worker_trial
-  filebase = './log/'+gamename+'.'+optimizer+'.'+str(num_episode)+'.'+str(population)
-  controller_filebase = './controller/'+gamename+'.'+optimizer+'.'+str(num_episode)+'.'+str(population)
+  filebase = './log/'+env_name+'.'+optimizer+'.'+str(num_episode)+'.'+str(population)
+  controller_filebase = './controller/'+env_name+'.'+optimizer+'.'+str(num_episode)+'.'+str(population)
 
-  model = make_model(gamename)
+  model = make_model()
 
   num_params = model.param_count
   print("size of model", num_params)
@@ -162,8 +164,10 @@ def encode_solution_packets(seeds, solutions, train_mode=1, max_len=-1):
     worker_num = int(i / num_worker_trial) + 1
     result.append([worker_num, i, seeds[i], train_mode, max_len])
     result.append(np.round(np.array(solutions[i])*PRECISION,0))
+    
   result = np.concatenate(result).astype(np.int32)
   result = np.split(result, num_worker)
+  
   return result
 
 def decode_solution_packet(packet):
@@ -192,11 +196,13 @@ def decode_result_packet(packet):
     result.append([workers[i], jobs[i], fits[i], times[i]])
   return result
 
-def worker(weights, seed, max_len, train_mode_int=1):
+def worker(weights, seed, max_len, _new_model, train_mode_int=1):
+
+  #print('WORKER working on environment {}'.format(_new_model.env_name))
 
   train_mode = (train_mode_int == 1)
-  model.set_model_params(weights)
-  reward_list, t_list = simulate(model,
+  _new_model.set_model_params(weights)
+  reward_list, t_list = simulate(_new_model,
     train_mode=train_mode, render_mode=False, num_episode=num_episode, seed=seed, max_len=max_len)
   if batch_mode == 'min':
     reward = np.min(reward_list)
@@ -206,35 +212,46 @@ def worker(weights, seed, max_len, train_mode_int=1):
   return reward, t
 
 def slave():
-  model.make_env()
-  packet = np.empty(SOLUTION_PACKET_SIZE, dtype=np.int32)
+
+  #packet = (np.empty(SOLUTION_PACKET_SIZE, dtype=np.int32),'')
   while 1:
-    comm.Recv(packet, source=0)
+    packet = comm.recv(source=0)
+
+    current_env_name = packet['current_env_name']
+    packet = packet['result']
+    #packet, current_env_name = packet
 
     assert(len(packet) == SOLUTION_PACKET_SIZE)
     solutions = decode_solution_packet(packet)
     results = []
+    new_model = make_model()
+    new_model.make_env(current_env_name)
+
     for solution in solutions:
       worker_id, jobidx, seed, train_mode, max_len, weights = solution
       assert (train_mode == 1 or train_mode == 0), str(train_mode)
+      
       worker_id = int(worker_id)
       possible_error = "work_id = " + str(worker_id) + " rank = " + str(rank)
       assert worker_id == rank, possible_error
       jobidx = int(jobidx)
       seed = int(seed)
-      fitness, timesteps = worker(weights, seed, max_len, train_mode)
+    
+      fitness, timesteps = worker(weights, seed, max_len, new_model, train_mode)
+     
       results.append([worker_id, jobidx, fitness, timesteps])
     result_packet = encode_result_packet(results)
     assert len(result_packet) == RESULT_PACKET_SIZE
     comm.Send(result_packet, dest=0)
 
-def send_packets_to_slaves(packet_list):
+def send_packets_to_slaves(packet_list, current_env_name):
   num_worker = comm.Get_size()
   assert len(packet_list) == num_worker-1
   for i in range(1, num_worker):
     packet = packet_list[i-1]
     assert(len(packet) == SOLUTION_PACKET_SIZE)
-    comm.Send(packet, dest=i)
+    packet = {'result': packet, 'current_env_name': current_env_name}
+    comm.send(packet, dest=i)
 
 def receive_packets_from_slaves():
   result_packet = np.empty(RESULT_PACKET_SIZE, dtype=np.int32)
@@ -268,16 +285,24 @@ def evaluate_batch(model_params, max_len):
 
   packet_list = encode_solution_packets(seeds, solutions, train_mode=0, max_len=max_len)
 
-  send_packets_to_slaves(packet_list)
-  reward_list_total = receive_packets_from_slaves()
+  overall_rewards = []
+  reward_list = []
 
-  reward_list = reward_list_total[:, 0] # get rewards
-  return np.mean(reward_list)
+  for current_env_name in config.train_envs:
+    send_packets_to_slaves(packet_list, current_env_name)
+    packets_from_slaves = receive_packets_from_slaves()
+    reward_list = reward_list + packets_from_slaves[:, 0] # get rewards
+
+    overall_rewards.append(np.mean(reward_list))
+    #print(len(overall_rewards))
+
+  return np.mean(overall_rewards)
+
 
 def master():
 
   start_time = int(time.time())
-  sprint("training", gamename)
+  sprint("training", env_name)
   sprint("population", es.popsize)
   sprint("num_worker", num_worker)
   sprint("num_worker_trial", num_worker_trial)
@@ -294,9 +319,11 @@ def master():
   filename_best = controller_filebase+'.best.json'
   filename_es = controller_filebase+'.es.pk'
 
-  model.make_env()
-
   t = 0
+
+  #if len(config.train_envs) == 1:
+  current_env_name = config.train_envs[0]
+  model.make_env(current_env_name)
 
   history = []
   eval_log = []
@@ -304,6 +331,7 @@ def master():
   best_model_params_eval = None
 
   while True:
+
     t += 1
 
     solutions = es.ask()
@@ -316,15 +344,21 @@ def master():
 
     packet_list = encode_solution_packets(seeds, solutions, max_len=max_length)
 
-    send_packets_to_slaves(packet_list)
-    reward_list_total = receive_packets_from_slaves()
+    reward_list = np.zeros(population)
+    time_list = np.zeros(population)
 
-    reward_list = reward_list_total[:, 0] # get rewards
+    for current_env_name in config.train_envs:
 
-    mean_time_step = int(np.mean(reward_list_total[:, 1])*100)/100. # get average time step
-    max_time_step = int(np.max(reward_list_total[:, 1])*100)/100. # get average time step
-    avg_reward = int(np.mean(reward_list)*100)/100. # get average time step
-    std_reward = int(np.std(reward_list)*100)/100. # get average time step
+      send_packets_to_slaves(packet_list, current_env_name)
+      packets_from_slaves = receive_packets_from_slaves()
+
+      reward_list = reward_list  + packets_from_slaves[:, 0]
+      time_list = time_list  + packets_from_slaves[:, 1]
+
+    mean_time_step = int(np.mean(time_list)*100)/100. # get average time step
+    max_time_step = int(np.max(time_list)*100)/100. # get max time step
+    avg_reward = int(np.mean(reward_list)*100)/100. # get average reward
+    std_reward = int(np.std(reward_list)*100)/100. # get std reward
 
     es.tell(reward_list)
 
@@ -354,7 +388,7 @@ def master():
 
     pickle.dump(es, open(filename_es, 'wb'))
 
-    sprint(gamename, h)
+    sprint(env_name, h)
 
     if (t == 1):
       best_reward_eval = avg_reward
@@ -384,8 +418,8 @@ def master():
 
 
 def main(args):
-  global gamename, optimizer, init_opt, num_episode, eval_steps, max_length, num_worker, num_worker_trial, antithetic, seed_start, retrain_mode, cap_time_mode #, vae_version, rnn_version,
-  gamename = args.gamename
+  global env_name, optimizer, init_opt, num_episode, eval_steps, max_length, num_worker, num_worker_trial, antithetic, seed_start, retrain_mode, cap_time_mode #, vae_version, rnn_version,
+  env_name = args.env_name
   optimizer = args.optimizer
   init_opt = args.init_opt
   #vae_version = args.vae_version
@@ -400,7 +434,6 @@ def main(args):
   retrain_mode = (args.retrain == 1)
   cap_time_mode= (args.cap_time == 1)
   seed_start = args.seed_start
-  
 
   initialize_settings(args.sigma_init, args.sigma_decay, init_opt)
 
@@ -438,7 +471,7 @@ def mpi_fork(n):
 if __name__ == "__main__":
   parser = argparse.ArgumentParser(description=('Train policy on OpenAI Gym environment '
                                                 'using pepg, ses, openes, ga, cma'))
-  parser.add_argument('gamename', type=str, help='car_racing etc.')
+  parser.add_argument('env_name', type=str, help='car_racing etc - this is only used for labelling files etc, the actual environments are defined in config.py')
   parser.add_argument('-o', '--optimizer', type=str, help='ses, pepg, openes, ga, cma.', default='cma')
   parser.add_argument('--init_opt', type=str, default = '', help='which optimiser pickle file to initialise with')
   parser.add_argument('-e', '--num_episode', type=int, default=1, help='num episodes per trial (controller)')
@@ -455,7 +488,7 @@ if __name__ == "__main__":
   parser.add_argument('--sigma_init', type=float, default=0.50, help='sigma_init')
   parser.add_argument('--sigma_decay', type=float, default=0.999, help='sigma_decay')
 
-
   args = parser.parse_args()
   if "parent" == mpi_fork(args.num_worker+1): os.exit()
   main(args)
+

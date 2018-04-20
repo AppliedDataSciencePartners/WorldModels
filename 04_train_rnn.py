@@ -1,11 +1,11 @@
-#python 04_train_rnn.py --max_batch 0
+#python 04_train_rnn.py --new_model
 
 from rnn.arch import RNN
 import argparse
 import numpy as np
 
 def main(args):
-  
+    
     start_batch = args.start_batch
     max_batch = args.max_batch
     new_model = args.new_model
@@ -35,10 +35,9 @@ def main(args):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description=('Train VAE'))
+    parser = argparse.ArgumentParser(description=('Train RNN'))
     parser.add_argument('--start_batch', type=int, default = 0, help='The start batch number')
     parser.add_argument('--max_batch', type=int, default = 0, help='The max batch number')
-
     parser.add_argument('--new_model', action='store_true', help='start a new model from scratch?')
 
     args = parser.parse_args()
