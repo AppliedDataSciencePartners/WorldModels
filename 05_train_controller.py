@@ -286,12 +286,12 @@ def evaluate_batch(model_params, max_len):
   packet_list = encode_solution_packets(seeds, solutions, train_mode=0, max_len=max_len)
 
   overall_rewards = []
-  reward_list = []
+  reward_list = np.zeros(population)
 
   for current_env_name in config.train_envs:
     send_packets_to_slaves(packet_list, current_env_name)
     packets_from_slaves = receive_packets_from_slaves()
-    reward_list = reward_list + packets_from_slaves[:, 0] # get rewards
+    reward_list = packets_from_slaves[:, 0] # get rewards
 
     overall_rewards.append(np.mean(reward_list))
     #print(len(overall_rewards))
