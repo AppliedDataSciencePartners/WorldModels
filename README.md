@@ -5,4 +5,4 @@ Code base adapted from https://github.com/hardmaru/estool
 
 For full installation and run instructions see this blog post:
 
-https://applied-data.science/blog/how-to-build-your-own-world-model-using-python-and-keras/
+https://applied-data.science/blog/hallucinogenic-deep-reinforcement-learning-using-python-and-keras
