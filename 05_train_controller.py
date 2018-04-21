@@ -240,6 +240,9 @@ def slave():
       fitness, timesteps = worker(weights, seed, max_len, new_model, train_mode)
      
       results.append([worker_id, jobidx, fitness, timesteps])
+    
+    new_model.env.close()
+    
     result_packet = encode_result_packet(results)
     assert len(result_packet) == RESULT_PACKET_SIZE
     comm.Send(result_packet, dest=0)
