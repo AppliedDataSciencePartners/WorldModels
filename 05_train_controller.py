@@ -358,6 +358,9 @@ def master():
       reward_list = reward_list  + packets_from_slaves[:, 0]
       time_list = time_list  + packets_from_slaves[:, 1]
 
+    reward_list = reward_list / len(config.train_envs)
+    time_list = time_list / len(config.train_envs)
+    
     mean_time_step = int(np.mean(time_list)*100)/100. # get average time step
     max_time_step = int(np.max(time_list)*100)/100. # get max time step
     avg_reward = int(np.mean(reward_list)*100)/100. # get average reward
