@@ -25,11 +25,11 @@ def main(args):
     batch_size = min(batch_size, total_episodes)
 
 
-    while s < total_episodes:
+    while s < batch_size:
         obs_data = []
         action_data = []
 
-        for i_episode in range(batch_size):
+        for i_episode in range(total_episodes):
             print('-----')
             observation = env.reset()
             observation = config.adjust_obs(observation)
