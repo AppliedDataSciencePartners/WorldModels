@@ -214,6 +214,9 @@ def worker(weights, seed, max_len, _new_model, train_mode_int=1):
 def slave():
 
   #packet = (np.empty(SOLUTION_PACKET_SIZE, dtype=np.int32),'')
+
+  new_model = make_model()
+  
   while 1:
     packet = comm.recv(source=0)
 
@@ -224,7 +227,7 @@ def slave():
     assert(len(packet) == SOLUTION_PACKET_SIZE)
     solutions = decode_solution_packet(packet)
     results = []
-    new_model = make_model()
+    
     new_model.make_env(current_env_name)
 
     for solution in solutions:
