@@ -13,7 +13,7 @@ def main(args):
 
   vae = VAE()
 
-  first_item = True
+  data = None
 
   if not new_model:
     try:
@@ -28,17 +28,16 @@ def main(args):
     for env_name in config.train_envs:
       try:
         new_data = np.load('./data/obs_data_' + env_name + '_' + str(batch_num) + '.npy')
-        if first_item:
+        if data is None:
           data = new_data
-          first_item = False
         else:
           data = np.concatenate([data, new_data])
         print('Found {}...current data size = {} episodes'.format(env_name, len(data)))
       except:
         pass
 
-  train_data = np.array([item for obs in data for item in obs])
-  vae.train(train_data)
+  data = np.array([item for obs in data for item in obs])
+  vae.train(data)
 
 if __name__ == "__main__":
   parser = argparse.ArgumentParser(description=('Train VAE'))

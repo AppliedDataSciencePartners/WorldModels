@@ -3,7 +3,7 @@ import numpy as np
 from keras.layers import Input, Conv2D, Flatten, Dense, Conv2DTranspose, Lambda, Reshape
 from keras.models import Model
 from keras import backend as K
-from keras.callbacks import EarlyStopping
+from keras.callbacks import EarlyStopping, ModelCheckpoint
 
 INPUT_DIM = (64,64,3)
 
@@ -21,8 +21,8 @@ CONV_T_ACTIVATIONS = ['relu','relu','relu','sigmoid']
 
 Z_DIM = 32
 
-EPOCHS = 1
-BATCH_SIZE = 32
+EPOCHS = 100
+BATCH_SIZE = 64
 
 def sampling(args):
     z_mean, z_log_var = args
@@ -109,8 +109,10 @@ class VAE():
 
     def train(self, data):
 
+        filepath = './vae/weights.h5'
         earlystop = EarlyStopping(monitor='val_loss', min_delta=0.0001, patience=5, verbose=1, mode='auto')
-        callbacks_list = [earlystop]
+        checkpoint = ModelCheckpoint(filepath, monitor='val_loss', verbose=0, save_best_only=True, save_weights_only=True, mode='auto', period=1)
+        callbacks_list = [earlystop, checkpoint]
 
         self.model.fit(data, data,
                 shuffle=True,
@@ -119,8 +121,6 @@ class VAE():
                 validation_split=0.2,
                 callbacks=callbacks_list)
         
-        self.model.save_weights('./vae/weights.h5')
-
     def save_weights(self, filepath):
         self.model.save_weights(filepath)
 
