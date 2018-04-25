@@ -11,6 +11,8 @@ import sys
 import pickle
 import random
 
+from pympler.tracker import SummaryTracker
+
 
 from model import make_model, simulate
 from es import CMAES, SimpleGA, OpenES, PEPG
@@ -18,6 +20,8 @@ import argparse
 import time
 
 import config
+
+
 
 ### ES related code - parameters are just dummy values so do not edit here. Instead, set in the args to the script.
 num_episode = 1
@@ -70,7 +74,7 @@ def initialize_settings(sigma_init=0.1, sigma_decay=0.9999, init_opt = ''):
   model = make_model()
 
   num_params = model.param_count
-  print("size of model", num_params)
+  #print("size of model", num_params)
 
   if len(init_opt) > 0:
     es = pickle.load(open(init_opt, 'rb'))  
@@ -196,13 +200,13 @@ def decode_result_packet(packet):
     result.append([workers[i], jobs[i], fits[i], times[i]])
   return result
 
-def worker(weights, seed, max_len, _new_model, train_mode_int=1):
+def worker(weights, seed, max_len, new_model, train_mode_int=1):
 
   #print('WORKER working on environment {}'.format(_new_model.env_name))
 
   train_mode = (train_mode_int == 1)
-  _new_model.set_model_params(weights)
-  reward_list, t_list = simulate(_new_model,
+  new_model.set_model_params(weights)
+  reward_list, t_list = simulate(new_model,
     train_mode=train_mode, render_mode=False, num_episode=num_episode, seed=seed, max_len=max_len)
   if batch_mode == 'min':
     reward = np.min(reward_list)
@@ -213,22 +217,23 @@ def worker(weights, seed, max_len, _new_model, train_mode_int=1):
 
 def slave():
 
-  #packet = (np.empty(SOLUTION_PACKET_SIZE, dtype=np.int32),'')
-
   new_model = make_model()
   
   while 1:
+    #print('waiting for packet')
     packet = comm.recv(source=0)
-
+    #comm.Recv(packet, source=0)
     current_env_name = packet['current_env_name']
     packet = packet['result']
-    #packet, current_env_name = packet
+    
 
     assert(len(packet) == SOLUTION_PACKET_SIZE)
     solutions = decode_solution_packet(packet)
     results = []
+    #tracker2 = SummaryTracker()
     
     new_model.make_env(current_env_name)
+    #tracker2.print_diff()
 
     for solution in solutions:
       worker_id, jobidx, seed, train_mode, max_len, weights = solution
@@ -243,12 +248,14 @@ def slave():
       fitness, timesteps = worker(weights, seed, max_len, new_model, train_mode)
      
       results.append([worker_id, jobidx, fitness, timesteps])
-    
+
     new_model.env.close()
-    
+
     result_packet = encode_result_packet(results)
     assert len(result_packet) == RESULT_PACKET_SIZE
     comm.Send(result_packet, dest=0)
+    #print('slave: completed solutions')
+    
 
 def send_packets_to_slaves(packet_list, current_env_name):
   num_worker = comm.Get_size()
@@ -298,7 +305,6 @@ def evaluate_batch(model_params, max_len):
     send_packets_to_slaves(packet_list, current_env_name)
     packets_from_slaves = receive_packets_from_slaves()
     reward_list = packets_from_slaves[:, 0] # get rewards
-
     overall_rewards.append(np.mean(reward_list))
     #print(len(overall_rewards))
 
@@ -336,8 +342,10 @@ def master():
   best_reward_eval = 0
   best_model_params_eval = None
 
-  while True:
+  
 
+  while True:
+    
     t += 1
 
     solutions = es.ask()
@@ -352,18 +360,28 @@ def master():
 
     reward_list = np.zeros(population)
     time_list = np.zeros(population)
-
+    e_num = 1
+    
     for current_env_name in config.train_envs:
-
+      #print('before send packets')
+      #tracker1 = SummaryTracker()
       send_packets_to_slaves(packet_list, current_env_name)
+      #print('between send and receive')
+      #tracker1.print_diff()
       packets_from_slaves = receive_packets_from_slaves()
-
+      #print('after receive')
+      #tracker1.print_diff()
       reward_list = reward_list  + packets_from_slaves[:, 0]
       time_list = time_list  + packets_from_slaves[:, 1]
 
+      print('completed episode {} of {}'.format(e_num, len(config.train_envs)))
+      e_num += 1
+      
+
+    
     reward_list = reward_list / len(config.train_envs)
     time_list = time_list / len(config.train_envs)
-    
+
     mean_time_step = int(np.mean(time_list)*100)/100. # get average time step
     max_time_step = int(np.max(time_list)*100)/100. # get max time step
     avg_reward = int(np.mean(reward_list)*100)/100. # get average reward
@@ -398,6 +416,8 @@ def master():
     pickle.dump(es, open(filename_es, 'wb'))
 
     sprint(env_name, h)
+
+    
 
     if (t == 1):
       best_reward_eval = avg_reward
