@@ -1,9 +1,6 @@
 import numpy as np
 import random
 
-train_envs = ['car_racing']
-test_envs = ['car_racing']
-
 def generate_data_action(t, current_action):
 #     a = env.action_space.sample()
 #     return a
@@ -29,3 +26,5 @@ def generate_data_action(t, current_action):
 def adjust_obs(obs):
     return obs.astype('float32') / 255.
 
+train_envs = ['car_racing']
+test_envs = ['car_racing']

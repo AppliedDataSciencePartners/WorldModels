@@ -107,7 +107,7 @@ class VAE():
     def set_weights(self, filepath):
         self.model.load_weights(filepath)
 
-    def train(self, data):
+    def train(self, data, validation_split = 0.2):
 
         earlystop = EarlyStopping(monitor='val_loss', min_delta=0.0001, patience=5, verbose=1, mode='auto')
         callbacks_list = [earlystop]
@@ -116,7 +116,7 @@ class VAE():
                 shuffle=True,
                 epochs=EPOCHS,
                 batch_size=BATCH_SIZE,
-                validation_split=0.2,
+                validation_split=validation_split,
                 callbacks=callbacks_list)
         
         self.model.save_weights('./vae/weights.h5')
