@@ -13,7 +13,7 @@ def main(args):
 
   vae = VAE()
 
-  first_item = True
+  
 
   if not new_model:
     try:
@@ -24,6 +24,7 @@ def main(args):
 
   for batch_num in range(start_batch, max_batch + 1):
     print('Building batch {}...'.format(batch_num))
+    first_item = True
 
     for env_name in config.train_envs:
       try:
