@@ -27,7 +27,7 @@ BATCH_SIZE = 32
 def sampling(args):
     z_mean, z_log_var = args
     epsilon = K.random_normal(shape=(K.shape(z_mean)[0], Z_DIM), mean=0.,stddev=1.)
-    return z_mean + K.exp(z_log_var / 2) * epsilon
+    return z_mean + K.exp(z_log_var) * epsilon
 
 class VAE():
     def __init__(self):
@@ -91,7 +91,10 @@ class VAE():
 
         def vae_r_loss(y_true, y_pred):
 
-            return 1000 * K.mean(K.square(y_true - y_pred), axis = [1,2,3])
+            y_true_flat = K.Flatten(y_true)
+            y_pred_flat = K.Flatten(y_pred)
+
+            return 10 * K.mean(K.square(y_true_flat - y_pred_flat), axis = -1)
 
         def vae_kl_loss(y_true, y_pred):
             return - 0.5 * K.mean(1 + vae_z_log_var - K.square(vae_z_mean) - K.exp(vae_z_log_var), axis = -1)
