@@ -12,8 +12,6 @@ def main(args):
 
     vae = VAE()
 
-    first_item = True
-
     try:
       vae.set_weights('./vae/weights.h5')
     except:
@@ -21,6 +19,7 @@ def main(args):
       raise
 
     for batch_num in range(start_batch, max_batch + 1):
+      first_item = True
       print('Generating batch {}...'.format(batch_num))
 
       for env_name in config.train_envs:
