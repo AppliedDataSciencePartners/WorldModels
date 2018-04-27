@@ -45,8 +45,8 @@ def main(args):
         print('no data found for batch number {}'.format(batch_num))
 
 if __name__ == "__main__":
-  parser = argparse.ArgumentParser(description=('Train VAE'))
-  parser.add_argument('--start_batch', type=int, default = 0, help='The max batch number')
+  parser = argparse.ArgumentParser(description=('Generate RNN data'))
+  parser.add_argument('--start_batch', type=int, default = 0, help='The start batch number')
   parser.add_argument('--max_batch', type=int, default = 0, help='The max batch number')
 
   args = parser.parse_args()
