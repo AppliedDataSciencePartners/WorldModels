@@ -91,8 +91,8 @@ class VAE():
 
         def vae_r_loss(y_true, y_pred):
 
-            y_true_flat = Flatten(y_true)
-            y_pred_flat = Flatten(y_pred)
+            y_true_flat = K.flatten(y_true)
+            y_pred_flat = K.flatten(y_pred)
 
             return 10 * K.mean(K.square(y_true_flat - y_pred_flat), axis = -1)
 
