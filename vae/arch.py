@@ -27,7 +27,7 @@ BATCH_SIZE = 32
 def sampling(args):
     z_mean, z_log_var = args
     epsilon = K.random_normal(shape=(K.shape(z_mean)[0], Z_DIM), mean=0.,stddev=1.)
-    return z_mean + K.exp(z_log_var) * epsilon
+    return z_mean + K.exp(z_log_var / 2) * epsilon
 
 class VAE():
     def __init__(self):
