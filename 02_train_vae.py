@@ -38,11 +38,8 @@ def main(args):
       except:
         pass
 
-    if first_item == False: # i.e. data has been found for this batch number
-      data = np.array([item for obs in data for item in obs])
-      vae.train(data)
-    else:
-      print('no data found for batch number {}'.format(batch_num))
+  train_data = np.array([item for obs in data for item in obs])
+  vae.train(train_data)
 
 if __name__ == "__main__":
   parser = argparse.ArgumentParser(description=('Train VAE'))
