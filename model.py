@@ -20,12 +20,12 @@ from rnn.arch import RNN
 from controller.arch import Controller
 
 final_mode = False
-render_mode = True
+render_mode = False
 generate_data_mode = False
 dream_mode = False
 RENDER_DELAY = False
 record_video = False
-MEAN_MODE = False
+ADD_NOISE = False
 
 def make_model():
 
@@ -94,8 +94,8 @@ class Model:
     self.env = make_env(env_name, seed=seed, render_mode=render_mode, model = model)
 
 
-  def get_action(self, x, t=0, mean_mode=False):
-    # if mean_mode = True, ignore sampling.
+  def get_action(self, x, t=0, add_noise=False):
+    # if add_noise = True, ignore sampling.
     h = np.array(x).flatten()
     if self.time_input == 1:
       time_signal = float(t) / self.time_factor
@@ -105,7 +105,7 @@ class Model:
       w = self.weight[i]
       b = self.bias[i]
       h = np.matmul(h, w) + b
-      if (self.output_noise[i] and (not mean_mode)):
+      if (self.output_noise[i] and add_noise):
         out_size = self.shapes[i][1]
         out_std = self.bias_std[i]
         output_noise = np.random.randn(out_size)*out_std
@@ -165,7 +165,7 @@ def evaluate(model):
   total_reward = 0.0
   N = 100
   for i in range(N):
-    reward, t = simulate(model, train_mode=False, render_mode=False, num_episode=1)
+    reward, t = simulate(model, render_mode=False, num_episode=1)
     total_reward += reward[0]
   return (total_reward / float(N))
 
@@ -177,7 +177,7 @@ def compress_input_dct(obs):
   return new_obs.flatten()
 
 
-def simulate(model, train_mode=False, render_mode=True, num_episode=5, seed=-1, max_len=-1, generate_data_mode = False):
+def simulate(model, num_episode=5, seed=-1, max_len=-1, generate_data_mode = False):
 
   reward_list = []
   t_list = []
@@ -203,6 +203,7 @@ def simulate(model, train_mode=False, render_mode=True, num_episode=5, seed=-1, 
 
     model.env.render("human")
 
+
     if obs is None:
       obs = np.zeros(model.input_size)
 
@@ -220,10 +221,8 @@ def simulate(model, train_mode=False, render_mode=True, num_episode=5, seed=-1, 
 
       if generate_data_mode:
         action = config.generate_data_action(t=t, current_action = action)
-      elif MEAN_MODE:
-        action = model.get_action(controller_obs, t=t, mean_mode=(not train_mode))
       else:
-        action = model.get_action(controller_obs, t=t, mean_mode=False)
+        action = model.get_action(controller_obs, t=t, add_noise=ADD_NOISE)
 
 
       obs, reward, done, info = model.env.step(action)
@@ -291,7 +290,7 @@ def main(args):
 
     for i in range(100):
 
-      reward, steps_taken = simulate(model, train_mode=False, render_mode=False, num_episode=1, max_len = max_length, generate_data_mode = False)
+      reward, steps_taken = simulate(model, render_mode=False, num_episode=1, max_len = max_length, generate_data_mode = False)
       total_reward += reward[0]
       print("episode" , i, "reward =", reward[0])
     print("seed", the_seed, "average_reward", total_reward/100)
@@ -299,7 +298,7 @@ def main(args):
     if record_video:
       model.env = Monitor(model.env, directory='./videos',video_callable=lambda episode_id: True, write_upon_reset=True, force=True)
     while(5):
-      reward, steps_taken = simulate(model, train_mode=False, render_mode=render_mode, num_episode=1, max_len = max_length, generate_data_mode = generate_data_mode)
+      reward, steps_taken = simulate(model, render_mode=render_mode, num_episode=1, max_len = max_length, generate_data_mode = generate_data_mode)
       print ("terminal reward", reward, "average steps taken", np.mean(steps_taken)+1)
       #break
 

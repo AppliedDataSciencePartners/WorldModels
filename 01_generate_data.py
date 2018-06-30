@@ -37,6 +37,8 @@ def main(args):
         while s < total_episodes:
             obs_data = []
             action_data = []
+            reward_data = []
+            done_data = []
 
             for i_episode in range(batch_size):
                 print('-----')
@@ -50,27 +52,35 @@ def main(args):
                 done = False
                 action = env.action_space.sample()
                 t = 0
+                reward = 0
                 obs_sequence = []
                 action_sequence = []
+                reward_sequence = []
+                done_sequence = []
 
                 while t < time_steps: #and not done:
-                    t = t + 1
-                    
+
                     action = config.generate_data_action(t, action)
                     
                     obs_sequence.append(observation)
                     action_sequence.append(action)
+                    reward_sequence.append(reward)
+                    done_sequence.append(done)
 
                     observation, reward, done, info = env.step(action)
                     observation = config.adjust_obs(observation)
+
+                    t = t + 1
 
                     if render:
                         env.render()
 
                 obs_data.append(obs_sequence)
                 action_data.append(action_sequence)
+                reward_data.append(reward_sequence)
+                done_data.append(done_sequence)
                 
-                print("Batch {} Episode {} finished after {} timesteps".format(batch, i_episode, t+1))
+                print("Batch {} Episode {} finished after {} timesteps".format(batch, i_episode, t))
                 print("Current dataset contains {} observations".format(sum(map(len, obs_data))))
 
                 s = s + 1
@@ -78,6 +88,8 @@ def main(args):
             print("Saving dataset for batch {}".format(batch))
             np.save('./data/obs_data_' + current_env_name + '_' + str(batch), obs_data)
             np.save('./data/action_data_' + current_env_name + '_' + str(batch), action_data)
+            np.save('./data/reward_data_' + current_env_name + '_' + str(batch), reward_data)
+            np.save('./data/done_data_' + current_env_name + '_' + str(batch), done_data)
 
             batch = batch + 1
 

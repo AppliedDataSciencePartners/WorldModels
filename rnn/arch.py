@@ -6,6 +6,10 @@ from keras.models import Model
 from keras import backend as K
 from keras.callbacks import EarlyStopping
 
+from keras import losses
+
+import tensorflow as tf
+
 Z_DIM = 32
 ACTION_DIM = 3
 
@@ -35,7 +39,7 @@ class RNN():
 		lstm = LSTM(HIDDEN_UNITS, return_sequences=True, return_state = True)
 
 		lstm_output, _ , _ = lstm(rnn_x)
-		mdn = Dense(GAUSSIAN_MIXTURES * (3*Z_DIM))(lstm_output) #+ discrete_dim
+		mdn = Dense(GAUSSIAN_MIXTURES * (3*Z_DIM) + 2)(lstm_output) #
 
 		rnn = Model(rnn_x, mdn)
 
@@ -49,18 +53,43 @@ class RNN():
 
 		#### LOSS FUNCTION
 
-		def rnn_r_loss(y_true, y_pred):
-			pi, mu, sigma = self.get_mixture_coef(y_pred)
-		
-			result = self.tf_normal(y_true, mu, sigma, pi)
-			
-			result = -K.log(result + 1e-8)
-			result = K.mean(result, axis = (1,2)) # mean over rollout length and z dim
+		def rnn_z_loss(y_true, y_pred):
 
-			return result
-	
+			pi, mu, sigma, rew_pred, done_pred = self.get_mixture_coef(y_pred)
+			z_true, rew_true, done_true = self.get_responses(y_true)
+		
+		
+			z_loss = self.tf_normal(z_true, mu, sigma, pi)
+			z_loss = -K.log(z_loss + 1e-8)
+			z_loss = K.mean(z_loss, axis = (1,2)) # mean over rollout length and z dim
+
+			return z_loss
+
+		def rnn_rew_loss(y_true, y_pred):
+
+			pi, mu, sigma, rew_pred, done_pred = self.get_mixture_coef(y_pred)
+			z_true, rew_true, done_true = self.get_responses(y_true)
+
+
+			rew_loss =  K.binary_crossentropy(rew_true, rew_pred)
+			rew_loss = K.mean(rew_loss, axis = (1,2))
+
+			return rew_loss
+
+		def rnn_done_loss(y_true, y_pred):
+
+			pi, mu, sigma, rew_pred, done_pred = self.get_mixture_coef(y_pred)
+			z_true, rew_true, done_true = self.get_responses(y_true)
+		
+			done_loss = K.binary_crossentropy(done_true, done_pred)
+			done_loss = K.mean(done_loss, axis = (1,2))
+
+			return done_loss
+
+
 		def rnn_kl_loss(y_true, y_pred):
-			pi, mu, sigma = self.get_mixture_coef(y_pred)
+
+			pi, mu, sigma, rew_pred, done_pred = self.get_mixture_coef(y_pred)
 
 			mu = K.flatten(mu)
 			sigma = K.flatten(sigma)
@@ -69,10 +98,19 @@ class RNN():
 			return kl_loss
 
 		def rnn_loss(y_true, y_pred):
-			return rnn_r_loss(y_true, y_pred) #+ rnn_kl_loss(y_true, y_pred)
+			pi, mu, sigma, rew_pred, done_pred = self.get_mixture_coef(y_pred)
+			z_true, rew_true, done_true = self.get_responses(y_true)
 
 
-		rnn.compile(loss=rnn_loss, optimizer='rmsprop', metrics = [rnn_r_loss, rnn_kl_loss])
+
+			z_loss = rnn_z_loss(y_true, y_pred)
+			rew_loss = rnn_rew_loss(y_true, y_pred)
+			done_loss = rnn_done_loss(y_true, y_pred)
+
+			return z_loss + rew_loss + done_loss  #+ rnn_kl_loss(y_true, y_pred)
+
+
+		rnn.compile(loss=rnn_loss, optimizer='rmsprop', metrics = [rnn_z_loss, rnn_rew_loss, rnn_done_loss, rnn_kl_loss])
 
 		return (rnn,forward)
 
@@ -96,11 +134,16 @@ class RNN():
 	def save_weights(self, filepath):
 		self.model.save_weights(filepath)
 
+	def get_responses(self, y_true):
+
+		z_true = y_true[:,:,:Z_DIM]
+		rew_true = y_true[:,:,Z_DIM: (Z_DIM + 1) ]
+		done_true = y_true[:,:,(Z_DIM + 1):]
+
+		return z_true, rew_true, done_true
+
 
 	def get_mixture_coef(self, y_pred):
-
-		# y_pred = K.eval(y_pred)
-
 		
 		d = GAUSSIAN_MIXTURES * Z_DIM
 		
@@ -109,8 +152,9 @@ class RNN():
 		pi = y_pred[:,:,:d]
 		mu = y_pred[:,:,d:(2*d)]
 		log_sigma = y_pred[:,:,(2*d):(3*d)]
-		#discrete = y_pred[:,3*GAUSSIAN_MIXTURES:]
-		
+		reward = y_pred[:,:,(3*d):(3*d+1)]
+		done = y_pred[:,:,(3*d+1):]
+
 		pi = K.reshape(pi, [-1, rollout_length, GAUSSIAN_MIXTURES, Z_DIM])
 		mu = K.reshape(mu, [-1, rollout_length, GAUSSIAN_MIXTURES, Z_DIM])
 		log_sigma = K.reshape(log_sigma, [-1, rollout_length, GAUSSIAN_MIXTURES, Z_DIM])
@@ -118,12 +162,7 @@ class RNN():
 		pi = K.exp(pi) / K.sum(K.exp(pi), axis=2, keepdims=True)
 		sigma = K.exp(log_sigma)
 
-		# pi = K.eval(pi)
-		# mu = K.eval(mu)
-		# sigma = K.eval(sigma)
-
-
-		return pi, mu, sigma#, discrete
+		return pi, mu, sigma, reward, done
 
 
 	def tf_normal(self, y_true, mu, sigma, pi):

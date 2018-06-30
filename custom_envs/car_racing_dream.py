@@ -56,7 +56,7 @@ class CarRacingDream(gym.Env):
         self.model = model
 
         self.viewer = None
-        self.frame_count = None
+        self.t = None
 
         self.z = None
         self.reset()
@@ -76,8 +76,14 @@ class CarRacingDream(gym.Env):
         init_mu = np.array([0] * 32)
         init_logvar = np.array([0] * 32)
         self.z = self.sample_z(init_mu, init_logvar)
-        self.frame_count = 0
+        self.t = 0
         return self.z
+
+    def close(self):
+        if self.viewer is not None:
+            self.viewer.close()
+            self.viewer = None
+
 
 
     def get_mixture_coef(self, y_pred):
@@ -89,7 +95,8 @@ class CarRacingDream(gym.Env):
         pi = y_pred[:,:,:d]
         mu = y_pred[:,:,d:(2*d)]
         log_sigma = y_pred[:,:,(2*d):(3*d)]
-        #discrete = y_pred[:,3*GAUSSIAN_MIXTURES:]
+        reward = y_pred[:,:,(3*d):(3*d+1)]
+        done = y_pred[:,:,(3*d+1):]
         
         pi = np.reshape(pi, [-1, rollout_length, GAUSSIAN_MIXTURES, Z_DIM])
         mu = np.reshape(mu, [-1, rollout_length, GAUSSIAN_MIXTURES, Z_DIM])
@@ -98,10 +105,9 @@ class CarRacingDream(gym.Env):
         pi = np.exp(pi) / np.sum(np.exp(pi), axis=2, keepdims=True)
         sigma = np.exp(log_sigma)
 
-        return pi, mu, sigma#, discrete
+        return pi, mu, sigma, reward, done
 
-
-    def sample_next_z(self, action):  
+    def sample_next_mdn_output(self, action):  
 
         z_dim = self.model.rnn.z_dim
 
@@ -109,11 +115,13 @@ class CarRacingDream(gym.Env):
         
         y_pred = self.model.rnn.model.predict(input_to_rnn)
 
-        pi, mu, sigma = self.get_mixture_coef(y_pred)
+        pi, mu, sigma, reward, done = self.get_mixture_coef(y_pred)
 
         pi = pi[0,0,:,:]
         mu = mu[0,0,:,:]
         sigma = sigma[0,0,:,:]
+        reward = reward[0,0,:]
+        done = done[0,0,:]
 
         chosen_pi = np.zeros(z_dim)
         chosen_mu = np.zeros(z_dim)
@@ -127,19 +135,30 @@ class CarRacingDream(gym.Env):
 
         next_z = self.sample_z(chosen_mu, chosen_sigma)
 
-        return next_z
+        reward = np.exp(reward) / (1 + np.exp(reward))
+        done = np.exp(done) / (1 + np.exp(done))
+
+        if reward > 0.5:
+            next_reward = 3.2
+        else:
+            next_reward = -0.1
+
+        if done > 0.5:
+            next_done = True
+        else:
+            next_done = False
+
+        return next_z, next_reward, next_done
 
 
     def step(self, action):
-        # print(self.frame_count)
-        self.frame_count += 1
-        next_z = self.sample_next_z(action)
-        reward = 0
-        done = False
-        if self.frame_count > 3000:
-          done = True
+        # print(self.t)
+        self.t += 1
+        next_z, next_reward, next_done = self.sample_next_mdn_output(action)
+        if self.t > 3000:
+          next_done = True
         self.z = next_z
-        return next_z, reward, done, {}
+        return next_z, next_reward, next_done, {}
 
     def decode_obs(self, z):
         # decode the latent vector
@@ -152,19 +171,19 @@ class CarRacingDream(gym.Env):
 
     def render(self, mode='human', close=False):
 
-        img = self.model.vae.decoder.predict(np.array([self.z]))[0]
-
-        img = resize(img, (int(np.round(SCREEN_Y*FACTOR)), int(np.round(SCREEN_X*FACTOR))))
-
-        if self.frame_count > 0:
-          pass
-          #toimage(img, cmin=0, cmax=255).save('output/'+str(self.frame_count)+'.png')
-
         if close:
           if self.viewer is not None:
             self.viewer.close()
             self.viewer = None
           return
+
+        img = self.model.vae.decoder.predict(np.array([self.z]))[0]
+
+        img = resize(img, (int(np.round(SCREEN_Y*FACTOR)), int(np.round(SCREEN_X*FACTOR))))
+
+        if self.t > 0:
+          pass
+          #toimage(img, cmin=0, cmax=255).save('output/'+str(self.t)+'.png')
 
         if mode == 'rgb_array':
           return img

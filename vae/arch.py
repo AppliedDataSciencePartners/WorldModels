@@ -127,16 +127,24 @@ class VAE():
     def save_weights(self, filepath):
         self.model.save_weights(filepath)
 
-    def generate_rnn_data(self, obs_data, action_data):
+    def generate_rnn_data(self, obs_data, action_data, reward_data, done_data):
 
         rnn_input = []
         rnn_output = []
 
-        for i, j in zip(obs_data, action_data):    
-            rnn_z_input = self.encoder.predict(np.array(i))
-            conc = [np.concatenate([x,y]) for x, y in zip(rnn_z_input, j)]
-            rnn_input.append(conc[:-1])
-            rnn_output.append(np.array(rnn_z_input[1:]))
+        for obs, act, rew, done in zip(obs_data, action_data, reward_data, done_data):    
+
+            rew = np.where(rew>0, 1, 0)
+            done = done.astype(int) 
+
+            rnn_z_input = self.encoder.predict(np.array(obs))
+            conc_in = [np.concatenate([x, y]) for x,y in zip(rnn_z_input, act)]
+            conc_out = [np.concatenate([x, [y], [int(z)]]) for x,y, z in zip(rnn_z_input, rew, done)]
+
+
+
+            rnn_input.append(conc_in[:-1])
+            rnn_output.append(np.array(conc_out[1:]))
 
         rnn_input = np.array(rnn_input)
         rnn_output = np.array(rnn_output)

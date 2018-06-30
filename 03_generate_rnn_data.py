@@ -26,19 +26,26 @@ def main(args):
         try:
           new_obs_data = np.load('./data/obs_data_' + env_name + '_'  + str(batch_num) + '.npy') 
           new_action_data = np.load('./data/action_data_' + env_name + '_'  + str(batch_num) + '.npy')
+          new_reward_data = np.load('./data/reward_data_' + env_name + '_'  + str(batch_num) + '.npy') 
+          new_done_data = np.load('./data/done_data_' + env_name + '_'  + str(batch_num) + '.npy')
           if first_item:
             obs_data = new_obs_data
             action_data = new_action_data
+            reward_data = new_reward_data
+            done_data = new_done_data
             first_item = False
           else:
             obs_data = np.concatenate([obs_data, new_obs_data])
             action_data = np.concatenate([action_data, new_action_data])
+            reward_data = np.concatenate([reward_data, new_reward_data])
+            done_data = np.concatenate([done_data, new_done_data])
+
           print('Found {}...current data size = {} episodes'.format(env_name, len(obs_data)))
         except:
           pass
       
       if first_item == False:
-        rnn_input, rnn_output = vae.generate_rnn_data(obs_data, action_data)
+        rnn_input, rnn_output = vae.generate_rnn_data(obs_data, action_data, reward_data, done_data)
         np.save('./data/rnn_input_' + str(batch_num), rnn_input)
         np.save('./data/rnn_output_' + str(batch_num), rnn_output)
       else:

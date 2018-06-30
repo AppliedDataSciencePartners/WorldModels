@@ -31,6 +31,7 @@ def main(args):
           rnn_input = new_rnn_input
           rnn_output = new_rnn_output
 
+
     rnn.train(rnn_input, rnn_output)
 
 

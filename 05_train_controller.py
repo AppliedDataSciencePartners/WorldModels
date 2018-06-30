@@ -61,8 +61,8 @@ comm = MPI.COMM_WORLD
 rank = comm.Get_rank()
 
 PRECISION = 10000
-SOLUTION_PACKET_SIZE = (6+num_params)*num_worker_trial
-RESULT_PACKET_SIZE = 4*num_worker_trial
+SOLUTION_PACKET_SIZE = None
+RESULT_PACKET_SIZE = None
 ###
 
 def initialize_settings(sigma_init=0.1, sigma_decay=0.9999, init_opt = ''):
@@ -129,7 +129,7 @@ def initialize_settings(sigma_init=0.1, sigma_decay=0.9999, init_opt = ''):
       es = oes
 
   PRECISION = 10000
-  SOLUTION_PACKET_SIZE = (6+num_params)*num_worker_trial
+  SOLUTION_PACKET_SIZE = (4+num_params)*num_worker_trial
   RESULT_PACKET_SIZE = 4*num_worker_trial
 ###
 
@@ -148,17 +148,20 @@ class Seeder:
     result = np.random.randint(self.limit, size=batch_size).tolist()
     return result
 
-def encode_solution_packets(seeds, solutions, train_mode=1, dream_mode=0, max_len=-1):
+def encode_solution_packets(seeds, solutions, max_len=-1):
+
   n = len(seeds)
   result = []
   worker_num = 0
   for i in range(n):
     worker_num = int(i / num_worker_trial) + 1
-    result.append([worker_num, i, seeds[i], train_mode, dream_mode, max_len])
+    result.append([worker_num, i, seeds[i], max_len])
     result.append(np.round(np.array(solutions[i])*PRECISION,0))
-    
+
   result = np.concatenate(result).astype(np.int32)
   result = np.split(result, num_worker)
+
+
   
   return result
 
@@ -166,7 +169,7 @@ def decode_solution_packet(packet):
   packets = np.split(packet, num_worker_trial)
   result = []
   for p in packets:
-    result.append([p[0], p[1], p[2], p[3], p[4], p[5], p[6:].astype(np.float)/PRECISION])
+    result.append([p[0], p[1], p[2], p[3], p[4:].astype(np.float)/PRECISION])
   return result
 
 def encode_result_packet(results):
@@ -188,18 +191,14 @@ def decode_result_packet(packet):
     result.append([workers[i], jobs[i], fits[i], times[i]])
   return result
 
-def worker(weights, seed, max_len, new_model, train_mode_int=1):
+def worker(weights, seed, max_len, new_model):
 
   #print('WORKER working on environment {}'.format(new_model.env_name))
-
-  train_mode = (train_mode_int == 1)
 
   new_model.set_model_params(weights)
 
   reward_list, t_list = simulate(
-    new_model,
-    train_mode=train_mode
-    , render_mode=False
+    new_model
     , num_episode=num_episode
     , seed=seed
     , max_len=max_len
@@ -221,25 +220,25 @@ def slave():
     packet = comm.recv(source=0)
     #comm.Recv(packet, source=0)
     current_env_name = packet['current_env_name']
-    packet = packet['result']
-    
+    dream_mode = packet['dream_mode']
 
-    assert(len(packet) == SOLUTION_PACKET_SIZE)
+    packet = packet['result']
+
+    
+    assert(len(packet) == SOLUTION_PACKET_SIZE), (len(packet), SOLUTION_PACKET_SIZE)
     solutions = decode_solution_packet(packet)
+
     results = []
     
-    worker_id, jobidx, seed, train_mode, dream_mode, max_len, weights = solutions[0]
-
     if dream_mode:
       dream_model = make_model()
-      new_model.make_env(env_name + '_dream', model = dream_model)
+      new_model.make_env(current_env_name + '_dream', model = dream_model)
     else:
       new_model.make_env(current_env_name)
 
 
     for solution in solutions:
-      worker_id, jobidx, seed, train_mode, dream_mode, max_len, weights = solution
-      assert (train_mode == 1 or train_mode == 0), str(train_mode)
+      worker_id, jobidx, seed, max_len, weights = solution
       
       worker_id = int(worker_id)
       possible_error = "work_id = " + str(worker_id) + " rank = " + str(rank)
@@ -247,7 +246,7 @@ def slave():
       jobidx = int(jobidx)
       seed = int(seed)
     
-      fitness, timesteps = worker(weights, seed, max_len, new_model, train_mode)
+      fitness, timesteps = worker(weights, seed, max_len, new_model)
      
       results.append([worker_id, jobidx, fitness, timesteps])
 
@@ -259,13 +258,13 @@ def slave():
     #print('slave: completed solutions')
     
 
-def send_packets_to_slaves(packet_list, current_env_name):
+def send_packets_to_slaves(packet_list, current_env_name, dream_mode):
   num_worker = comm.Get_size()
   assert len(packet_list) == num_worker-1
   for i in range(1, num_worker):
     packet = packet_list[i-1]
-    assert(len(packet) == SOLUTION_PACKET_SIZE)
-    packet = {'result': packet, 'current_env_name': current_env_name}
+    assert(len(packet) == SOLUTION_PACKET_SIZE), (len(packet), SOLUTION_PACKET_SIZE)
+    packet = {'result': packet, 'current_env_name': current_env_name, 'dream_mode': dream_mode}
     comm.send(packet, dest=i)
 
 def receive_packets_from_slaves():
@@ -298,13 +297,13 @@ def evaluate_batch(model_params, max_len):
 
   seeds = np.arange(es.popsize)
 
-  packet_list = encode_solution_packets(seeds, solutions, train_mode=0, dream_mode=0, max_len=max_len)
+  packet_list = encode_solution_packets(seeds, solutions, max_len=max_len)
 
   overall_rewards = []
   reward_list = np.zeros(population)
 
   for current_env_name in config.train_envs:
-    send_packets_to_slaves(packet_list, current_env_name)
+    send_packets_to_slaves(packet_list, current_env_name, dream_mode = 0)
     packets_from_slaves = receive_packets_from_slaves()
     reward_list = packets_from_slaves[:, 0] # get rewards
     overall_rewards.append(np.mean(reward_list))
@@ -358,7 +357,7 @@ def master():
     else:
       seeds = seeder.next_batch(es.popsize)
 
-    packet_list = encode_solution_packets(seeds, solutions, train_mode = 1, dream_mode = dream_mode, max_len=max_length)
+    packet_list = encode_solution_packets(seeds, solutions, max_len=max_length)
 
     reward_list = np.zeros(population)
     time_list = np.zeros(population)
@@ -367,7 +366,7 @@ def master():
     for current_env_name in config.train_envs:
       #print('before send packets')
       #tracker1 = SummaryTracker()
-      send_packets_to_slaves(packet_list, current_env_name)
+      send_packets_to_slaves(packet_list, current_env_name, dream_mode)
       #print('between send and receive')
       #tracker1.print_diff()
       packets_from_slaves = receive_packets_from_slaves()
