@@ -22,6 +22,7 @@ from controller.arch import Controller
 final_mode = False
 render_mode = True
 generate_data_mode = False
+dream_mode = False
 RENDER_DELAY = False
 record_video = False
 MEAN_MODE = False
@@ -87,10 +88,10 @@ class Model:
 
     self.render_mode = False
 
-  def make_env(self, env_name, seed=-1, render_mode=False):
+  def make_env(self, env_name, seed=-1, render_mode=False, model = None):
     self.render_mode = render_mode
     self.env_name = env_name
-    self.env = make_env(env_name, seed=seed, render_mode=render_mode)
+    self.env = make_env(env_name, seed=seed, render_mode=render_mode, model = model)
 
 
   def get_action(self, x, t=0, mean_mode=False):
@@ -153,8 +154,10 @@ class Model:
     self.cell_values = np.zeros(self.rnn.hidden_units) 
 
   def update(self, obs, t):
-    vae_encoded_obs = self.vae.encoder.predict(np.array([obs]))[0]
-    return vae_encoded_obs
+    if obs.shape == self.vae.input_dim:
+      return self.vae.encoder.predict(np.array([obs]))[0]
+    else:
+      return obs
 
 def evaluate(model):
   # run 100 times and average score, according to the reles.
@@ -222,7 +225,9 @@ def simulate(model, train_mode=False, render_mode=True, num_episode=5, seed=-1, 
       else:
         action = model.get_action(controller_obs, t=t, mean_mode=False)
 
+
       obs, reward, done, info = model.env.step(action)
+      
       obs = config.adjust_obs(obs)
 
       input_to_rnn = [np.array([[np.concatenate([vae_encoded_obs, action])]]),np.array([model.hidden]),np.array([model.cell_values])]
@@ -253,6 +258,7 @@ def main(args):
   the_seed = args.seed
   final_mode = args.final_mode
   generate_data_mode = args.generate_data_mode
+  dream_mode = args.dream_mode
   render_mode = args.render_mode
   record_video = args.record_video
   max_length = args.max_length
@@ -266,7 +272,11 @@ def main(args):
   model = make_model()
   print('model size', model.param_count)
 
-  model.make_env(env_name, render_mode=render_mode)
+  if dream_mode:
+    dream_model = make_model()
+    model.make_env(env_name + '_dream', render_mode=render_mode, model = dream_model)
+  else:
+    model.make_env(env_name, render_mode=render_mode)
 
   if len(filename) > 0:
     model.load_model(filename)
@@ -300,6 +310,7 @@ if __name__ == "__main__":
   parser.add_argument('--seed', type = int, default = 111, help='which seed?')
   parser.add_argument('--final_mode', action='store_true', help='select this to test a given controller over 100 trials')
   parser.add_argument('--generate_data_mode', action='store_true', help='uses the pick_random_action function from config')
+  parser.add_argument('--dream_mode', action='store_true', help='run the model in the dreams of the agent')
   parser.add_argument('--render_mode', action='store_true', help='render the run')
   parser.add_argument('--record_video', action='store_true', help='record the run to ./videos')
   parser.add_argument('--max_length', type = int, default = -1, help='max_length of an episode')

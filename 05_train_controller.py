@@ -13,6 +13,7 @@ import random
 
 from pympler.tracker import SummaryTracker
 
+from model import make_model
 
 from model import make_model, simulate
 from es import CMAES, SimpleGA, OpenES, PEPG
@@ -21,12 +22,11 @@ import time
 
 import config
 
-
-
 ### ES related code - parameters are just dummy values so do not edit here. Instead, set in the args to the script.
 num_episode = 1
 eval_steps = 25 # evaluate every N_eval steps
 retrain_mode = True
+dream_mode = 0
 cap_time_mode = True
 
 num_worker = 8
@@ -61,7 +61,7 @@ comm = MPI.COMM_WORLD
 rank = comm.Get_rank()
 
 PRECISION = 10000
-SOLUTION_PACKET_SIZE = (5+num_params)*num_worker_trial
+SOLUTION_PACKET_SIZE = (6+num_params)*num_worker_trial
 RESULT_PACKET_SIZE = 4*num_worker_trial
 ###
 
@@ -129,25 +129,13 @@ def initialize_settings(sigma_init=0.1, sigma_decay=0.9999, init_opt = ''):
       es = oes
 
   PRECISION = 10000
-  SOLUTION_PACKET_SIZE = (5+num_params)*num_worker_trial
+  SOLUTION_PACKET_SIZE = (6+num_params)*num_worker_trial
   RESULT_PACKET_SIZE = 4*num_worker_trial
 ###
 
 def sprint(*args):
   print(args) # if python3, can do print(*args)
   sys.stdout.flush()
-
-class OldSeeder:
-  def __init__(self, init_seed=0):
-    self._seed = init_seed
-  def next_seed(self):
-    result = self._seed
-    self._seed += 1
-    return result
-  def next_batch(self, batch_size):
-    result = np.arange(self._seed, self._seed+batch_size).tolist()
-    self._seed += batch_size
-    return result
 
 class Seeder:
   def __init__(self, init_seed=0):
@@ -160,13 +148,13 @@ class Seeder:
     result = np.random.randint(self.limit, size=batch_size).tolist()
     return result
 
-def encode_solution_packets(seeds, solutions, train_mode=1, max_len=-1):
+def encode_solution_packets(seeds, solutions, train_mode=1, dream_mode=0, max_len=-1):
   n = len(seeds)
   result = []
   worker_num = 0
   for i in range(n):
     worker_num = int(i / num_worker_trial) + 1
-    result.append([worker_num, i, seeds[i], train_mode, max_len])
+    result.append([worker_num, i, seeds[i], train_mode, dream_mode, max_len])
     result.append(np.round(np.array(solutions[i])*PRECISION,0))
     
   result = np.concatenate(result).astype(np.int32)
@@ -178,7 +166,7 @@ def decode_solution_packet(packet):
   packets = np.split(packet, num_worker_trial)
   result = []
   for p in packets:
-    result.append([p[0], p[1], p[2], p[3], p[4], p[5:].astype(np.float)/PRECISION])
+    result.append([p[0], p[1], p[2], p[3], p[4], p[5], p[6:].astype(np.float)/PRECISION])
   return result
 
 def encode_result_packet(results):
@@ -202,12 +190,21 @@ def decode_result_packet(packet):
 
 def worker(weights, seed, max_len, new_model, train_mode_int=1):
 
-  #print('WORKER working on environment {}'.format(_new_model.env_name))
+  #print('WORKER working on environment {}'.format(new_model.env_name))
 
   train_mode = (train_mode_int == 1)
+
   new_model.set_model_params(weights)
-  reward_list, t_list = simulate(new_model,
-    train_mode=train_mode, render_mode=False, num_episode=num_episode, seed=seed, max_len=max_len)
+
+  reward_list, t_list = simulate(
+    new_model,
+    train_mode=train_mode
+    , render_mode=False
+    , num_episode=num_episode
+    , seed=seed
+    , max_len=max_len
+    )
+
   if batch_mode == 'min':
     reward = np.min(reward_list)
   else:
@@ -230,13 +227,18 @@ def slave():
     assert(len(packet) == SOLUTION_PACKET_SIZE)
     solutions = decode_solution_packet(packet)
     results = []
-    #tracker2 = SummaryTracker()
     
-    new_model.make_env(current_env_name)
-    #tracker2.print_diff()
+    worker_id, jobidx, seed, train_mode, dream_mode, max_len, weights = solutions[0]
+
+    if dream_mode:
+      dream_model = make_model()
+      new_model.make_env(env_name + '_dream', model = dream_model)
+    else:
+      new_model.make_env(current_env_name)
+
 
     for solution in solutions:
-      worker_id, jobidx, seed, train_mode, max_len, weights = solution
+      worker_id, jobidx, seed, train_mode, dream_mode, max_len, weights = solution
       assert (train_mode == 1 or train_mode == 0), str(train_mode)
       
       worker_id = int(worker_id)
@@ -296,7 +298,7 @@ def evaluate_batch(model_params, max_len):
 
   seeds = np.arange(es.popsize)
 
-  packet_list = encode_solution_packets(seeds, solutions, train_mode=0, max_len=max_len)
+  packet_list = encode_solution_packets(seeds, solutions, train_mode=0, dream_mode=0, max_len=max_len)
 
   overall_rewards = []
   reward_list = np.zeros(population)
@@ -335,7 +337,7 @@ def master():
 
   #if len(config.train_envs) == 1:
   current_env_name = config.train_envs[0]
-  model.make_env(current_env_name)
+  # model.make_env(current_env_name)
 
   history = []
   eval_log = []
@@ -356,7 +358,7 @@ def master():
     else:
       seeds = seeder.next_batch(es.popsize)
 
-    packet_list = encode_solution_packets(seeds, solutions, max_len=max_length)
+    packet_list = encode_solution_packets(seeds, solutions, train_mode = 1, dream_mode = dream_mode, max_len=max_length)
 
     reward_list = np.zeros(population)
     time_list = np.zeros(population)
@@ -393,7 +395,7 @@ def master():
     model_params = es_solution[0] # best historical solution
     reward = es_solution[1] # best reward
     curr_reward = es_solution[2] # best of the current batch
-    model.set_model_params(np.array(model_params).round(4))
+    # model.set_model_params(np.array(model_params).round(4))
 
     r_max = int(np.max(reward_list)*100)/100.
     r_min = int(np.min(reward_list)*100)/100.
@@ -447,7 +449,7 @@ def master():
 
 
 def main(args):
-  global env_name, optimizer, init_opt, num_episode, eval_steps, max_length, num_worker, num_worker_trial, antithetic, seed_start, retrain_mode, cap_time_mode #, vae_version, rnn_version,
+  global env_name, optimizer, init_opt, num_episode, eval_steps, max_length, num_worker, num_worker_trial, antithetic, seed_start, retrain_mode, dream_mode, cap_time_mode #, vae_version, rnn_version,
   env_name = args.env_name
   optimizer = args.optimizer
   init_opt = args.init_opt
@@ -461,6 +463,7 @@ def main(args):
   num_worker_trial = args.num_worker_trial
   antithetic = (args.antithetic == 1)
   retrain_mode = (args.retrain == 1)
+  dream_mode = (args.dream_mode == 1)
   cap_time_mode= (args.cap_time == 1)
   seed_start = args.seed_start
 
@@ -516,6 +519,9 @@ if __name__ == "__main__":
   parser.add_argument('-s', '--seed_start', type=int, default=111, help='initial seed')
   parser.add_argument('--sigma_init', type=float, default=0.50, help='sigma_init')
   parser.add_argument('--sigma_decay', type=float, default=0.999, help='sigma_decay')
+
+  parser.add_argument('--dream_mode', type=int, help='train the agent in its dreams?', default=0)
+
 
   args = parser.parse_args()
   if "parent" == mpi_fork(args.num_worker+1): os.exit()

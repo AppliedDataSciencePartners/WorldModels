@@ -315,6 +315,7 @@ class CarRacing(gym.Env):
         return self.step(None)[0]
 
     def step(self, action):
+        # print(self.t * FPS)
         if action is not None:
             self.car.steer(-action[0])
             self.car.gas(action[1])
