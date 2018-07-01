@@ -66,16 +66,16 @@ class CarRacingDream(gym.Env):
         return [seed]
 
 
-    def sample_z(self, mu, logvar):
-        z = mu + np.exp(logvar/2.0) * self.np_random.randn(*logvar.shape)
+    def sample_z(self, mu, sigma):
+        z = mu + sigma * self.np_random.randn(*sigma.shape)
         return z
 
 
 
     def reset(self):
         init_mu = np.array([0] * 32)
-        init_logvar = np.array([0] * 32)
-        self.z = self.sample_z(init_mu, init_logvar)
+        init_sigma = np.array([0] * 32)
+        self.z = self.sample_z(init_mu, init_sigma)
         self.t = 0
         return self.z
 
@@ -128,7 +128,7 @@ class CarRacingDream(gym.Env):
         chosen_sigma = np.zeros(z_dim)
 
         for j in range(z_dim):
-          idx = get_pi_idx(self.np_random.rand(), mu[:,j])
+          idx = get_pi_idx(self.np_random.rand(), pi[:,j])
           chosen_pi[j] = idx
           chosen_mu[j] = mu[idx, j]
           chosen_sigma[j] = sigma[idx, j]

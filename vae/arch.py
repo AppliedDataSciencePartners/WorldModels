@@ -29,12 +29,22 @@ def sampling(args):
     epsilon = K.random_normal(shape=(K.shape(z_mean)[0], Z_DIM), mean=0.,stddev=1.)
     return z_mean + K.exp(z_log_var / 2) * epsilon
 
+def random_batch(data_mu, data_logvar):
+    indices = np.random.permutation(N_data)[0:batch_size]
+    mu = data_mu[indices]
+    logvar = data_logvar[indices]
+    action = data_action[indices]
+    s = logvar.shape
+    z = mu + np.exp(logvar/2.0) * np.random.randn(*s)
+    return z, action
+
 class VAE():
     def __init__(self):
         self.models = self._build()
         self.model = self.models[0]
         self.encoder = self.models[1]
-        self.decoder = self.models[2]
+        self.encoder_mu_log_var = self.models[2]
+        self.decoder = self.models[3]
 
         self.input_dim = INPUT_DIM
         self.z_dim = Z_DIM
@@ -85,6 +95,7 @@ class VAE():
 
         vae = Model(vae_x, vae_d4_model)
         vae_encoder = Model(vae_x, vae_z)
+        vae_encoder_mu_log_var = Model(vae_x, (vae_z_mean, vae_z_log_var))
         vae_decoder = Model(vae_z_input, vae_d4_decoder)
 
         
@@ -94,7 +105,7 @@ class VAE():
             y_true_flat = K.flatten(y_true)
             y_pred_flat = K.flatten(y_pred)
 
-            return 10 * K.mean(K.square(y_true_flat - y_pred_flat), axis = -1)
+            return 1000 * K.mean(K.square(y_true_flat - y_pred_flat), axis = -1)
 
         def vae_kl_loss(y_true, y_pred):
             return - 0.5 * K.mean(1 + vae_z_log_var - K.square(vae_z_mean) - K.exp(vae_z_log_var), axis = -1)
@@ -104,7 +115,7 @@ class VAE():
             
         vae.compile(optimizer='rmsprop', loss = vae_loss,  metrics = [vae_r_loss, vae_kl_loss])
 
-        return (vae,vae_encoder, vae_decoder)
+        return (vae,vae_encoder, vae_encoder_mu_log_var, vae_decoder)
 
 
     def set_weights(self, filepath):
@@ -137,11 +148,12 @@ class VAE():
             rew = np.where(rew>0, 1, 0)
             done = done.astype(int) 
 
-            rnn_z_input = self.encoder.predict(np.array(obs))
+            mu, logvar = self.encoder_mu_log_var.predict(np.array(obs))
+            s = logvar.shape
+            rnn_z_input = mu + np.exp(logvar/2.0) * np.random.randn(*s)
+
             conc_in = [np.concatenate([x, y]) for x,y in zip(rnn_z_input, act)]
             conc_out = [np.concatenate([x, [y], [int(z)]]) for x,y, z in zip(rnn_z_input, rew, done)]
-
-
 
             rnn_input.append(conc_in[:-1])
             rnn_output.append(np.array(conc_out[1:]))

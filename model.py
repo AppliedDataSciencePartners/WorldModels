@@ -165,7 +165,7 @@ def evaluate(model):
   total_reward = 0.0
   N = 100
   for i in range(N):
-    reward, t = simulate(model, render_mode=False, num_episode=1)
+    reward, t = simulate(model, num_episode=1)
     total_reward += reward[0]
   return (total_reward / float(N))
 
@@ -177,7 +177,7 @@ def compress_input_dct(obs):
   return new_obs.flatten()
 
 
-def simulate(model, num_episode=5, seed=-1, max_len=-1, generate_data_mode = False):
+def simulate(model, num_episode=5, seed=-1, max_len=-1, generate_data_mode = False, render_mode = False):
 
   reward_list = []
   t_list = []
@@ -290,7 +290,7 @@ def main(args):
 
     for i in range(100):
 
-      reward, steps_taken = simulate(model, render_mode=False, num_episode=1, max_len = max_length, generate_data_mode = False)
+      reward, steps_taken = simulate(model, num_episode=1, max_len = max_length, generate_data_mode = False)
       total_reward += reward[0]
       print("episode" , i, "reward =", reward[0])
     print("seed", the_seed, "average_reward", total_reward/100)
