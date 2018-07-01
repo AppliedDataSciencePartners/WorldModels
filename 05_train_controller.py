@@ -374,8 +374,8 @@ def master():
       #tracker1.print_diff()
       reward_list = reward_list  + packets_from_slaves[:, 0]
       time_list = time_list  + packets_from_slaves[:, 1]
-
-      print('completed episode {} of {}'.format(e_num, len(config.train_envs)))
+      if len(config.train_envs) > 1:
+        print('completed environment {} of {}'.format(e_num, len(config.train_envs)))
       e_num += 1
       
 
