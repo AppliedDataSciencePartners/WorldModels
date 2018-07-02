@@ -49,10 +49,9 @@ def main(args):
                 # plt.show()
 
                 env.render()
-                done = False
                 action = env.action_space.sample()
                 t = 0
-                reward = 0
+
                 obs_sequence = []
                 action_sequence = []
                 reward_sequence = []
@@ -64,10 +63,13 @@ def main(args):
                     
                     obs_sequence.append(observation)
                     action_sequence.append(action)
+                    
+
+                    observation, reward, done, info = env.step(action)
+
                     reward_sequence.append(reward)
                     done_sequence.append(done)
 
-                    observation, reward, done, info = env.step(action)
                     observation = config.adjust_obs(observation)
 
                     t = t + 1

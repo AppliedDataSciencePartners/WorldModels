@@ -105,7 +105,7 @@ class VAE():
             y_true_flat = K.flatten(y_true)
             y_pred_flat = K.flatten(y_pred)
 
-            return 1000 * K.mean(K.square(y_true_flat - y_pred_flat), axis = -1)
+            return 100 * K.mean(K.square(y_true_flat - y_pred_flat), axis = -1)
 
         def vae_kl_loss(y_true, y_pred):
             return - 0.5 * K.mean(1 + vae_z_log_var - K.square(vae_z_mean) - K.exp(vae_z_log_var), axis = -1)
