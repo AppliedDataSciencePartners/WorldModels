@@ -142,6 +142,8 @@ class VAE():
 
         rnn_input = []
         rnn_output = []
+        initial_mu = []
+        initial_logvar = []
 
         for obs, act, rew, done in zip(obs_data, action_data, reward_data, done_data):    
 
@@ -157,11 +159,16 @@ class VAE():
 
             rnn_input.append(conc_in[:-1])
             rnn_output.append(np.array(conc_out[1:]))
+            initial_mu.append(mu[0, :])
+            initial_logvar.append(logvar[0, :])
 
         rnn_input = np.array(rnn_input)
         rnn_output = np.array(rnn_output)
+        initial_mu = np.array(initial_mu)
+        initial_logvar = np.array(initial_logvar)
 
-        return (rnn_input, rnn_output)
+    
+        return (rnn_input, rnn_output, initial_mu, initial_logvar)
     
 
 

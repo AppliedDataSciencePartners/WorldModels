@@ -45,9 +45,11 @@ def main(args):
           pass
       
       if first_item == False:
-        rnn_input, rnn_output = vae.generate_rnn_data(obs_data, action_data, reward_data, done_data)
+        rnn_input, rnn_output, initial_mu, initial_logvar = vae.generate_rnn_data(obs_data, action_data, reward_data, done_data)
         np.save('./data/rnn_input_' + str(batch_num), rnn_input)
         np.save('./data/rnn_output_' + str(batch_num), rnn_output)
+        np.save('./data/initial_mu_' + str(batch_num), initial_mu)
+        np.save('./data/initial_logvar_' + str(batch_num), initial_logvar)
       else:
         print('no data found for batch number {}'.format(batch_num))
 

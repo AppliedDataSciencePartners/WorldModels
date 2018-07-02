@@ -28,6 +28,13 @@ GAUSSIAN_MIXTURES = 5
 Z_DIM = 32
 
 
+initial_mu = np.load('./data/initial_mu_' + str(0) + '.npy')
+initial_logvar = np.load('./data/initial_logvar_' + str(0) + '.npy')
+
+initial_mu_logvar = [list(elem) for elem in zip(initial_mu, initial_logvar)]
+
+
+
 def get_pi_idx(x, pdf):
   # samples from a categorial distribution
   N = pdf.size
@@ -73,8 +80,11 @@ class CarRacingDream(gym.Env):
 
 
     def reset(self):
-        init_mu = np.array([0] * 32)
-        init_sigma = np.array([0] * 32)
+        idx = self.np_random.randint(0, len(initial_mu_logvar))
+        init_mu, init_logvar = initial_mu_logvar[idx]
+
+        init_sigma = np.exp(init_logvar / 2)
+
         self.z = self.sample_z(init_mu, init_sigma)
         self.t = 0
         return self.z
