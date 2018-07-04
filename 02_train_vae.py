@@ -13,8 +13,6 @@ def main(args):
 
   vae = VAE()
 
-  
-
   if not new_model:
     try:
       vae.set_weights('./vae/weights.h5')

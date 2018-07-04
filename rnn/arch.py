@@ -16,8 +16,8 @@ ACTION_DIM = 3
 HIDDEN_UNITS = 256
 GAUSSIAN_MIXTURES = 5
 
-BATCH_SIZE =32
-EPOCHS = 20
+BATCH_SIZE =100
+EPOCHS = 5
 
 
 
@@ -31,6 +31,8 @@ class RNN():
 		self.action_dim = ACTION_DIM
 		self.hidden_units = HIDDEN_UNITS
 		self.gaussian_mixtures = GAUSSIAN_MIXTURES
+		self.batch_size = BATCH_SIZE
+		self.epochs = EPOCHS
 
 	def _build(self):
 
@@ -87,21 +89,19 @@ class RNN():
 			return done_loss
 
 
-		def rnn_kl_loss(y_true, y_pred):
+		# def rnn_kl_loss(y_true, y_pred):
 
-			pi, mu, sigma, rew_pred, done_pred = self.get_mixture_coef(y_pred)
+		# 	pi, mu, sigma, rew_pred, done_pred = self.get_mixture_coef(y_pred)
 
-			mu = K.flatten(mu)
-			sigma = K.flatten(sigma)
+		# 	mu = K.flatten(mu)
+		# 	sigma = K.flatten(sigma)
 
-			kl_loss = - 0.5 * K.mean(1 + K.log(K.square(sigma)) - K.square(mu) - K.square(sigma), axis = -1)
-			return kl_loss
+		# 	kl_loss = - 0.5 * K.mean(1 + K.log(K.square(sigma)) - K.square(mu) - K.square(sigma), axis = -1)
+		# 	return kl_loss
 
 		def rnn_loss(y_true, y_pred):
 			pi, mu, sigma, rew_pred, done_pred = self.get_mixture_coef(y_pred)
 			z_true, rew_true, done_true = self.get_responses(y_true)
-
-
 
 			z_loss = rnn_z_loss(y_true, y_pred)
 			rew_loss = rnn_rew_loss(y_true, y_pred)
@@ -110,24 +110,19 @@ class RNN():
 			return z_loss + rew_loss + done_loss  #+ rnn_kl_loss(y_true, y_pred)
 
 
-		rnn.compile(loss=rnn_loss, optimizer='rmsprop', metrics = [rnn_z_loss, rnn_rew_loss, rnn_done_loss, rnn_kl_loss])
+		rnn.compile(loss=rnn_loss, optimizer='rmsprop', metrics = [rnn_z_loss, rnn_rew_loss, rnn_done_loss])
 
 		return (rnn,forward)
 
 	def set_weights(self, filepath):
 		self.model.load_weights(filepath)
 
-	def train(self, rnn_input, rnn_output, validation_split = 0.2):
-
-		earlystop = EarlyStopping(monitor='val_loss', min_delta=0.0001, patience=5, verbose=1, mode='auto')
-		callbacks_list = [earlystop]
+	def train(self, rnn_input, rnn_output):
 
 		self.model.fit(rnn_input, rnn_output,
 			shuffle=True,
-			epochs=EPOCHS,
-			batch_size=BATCH_SIZE,
-			validation_split=validation_split,
-			callbacks=callbacks_list)
+			epochs=1,
+			batch_size=1)
 
 		self.model.save_weights('./rnn/weights.h5')
 

@@ -145,15 +145,12 @@ class CarRacingDream(gym.Env):
 
         next_z = self.sample_z(chosen_mu, chosen_sigma)
 
-        reward = np.exp(reward) / (1 + np.exp(reward))
-        done = np.exp(done) / (1 + np.exp(done))
-
-        if reward > 0.5:
+        if reward > 0:
             next_reward = 3.2
         else:
             next_reward = -0.1
 
-        if done > 0.5:
+        if done > 0:
             next_done = True
         else:
             next_done = False
@@ -169,14 +166,6 @@ class CarRacingDream(gym.Env):
           next_done = True
         self.z = next_z
         return next_z, next_reward, next_done, {}
-
-    def decode_obs(self, z):
-        # decode the latent vector
-        img = self.model.vae.decoder.predict(np.array([z]))[0] * 255.
-        img = np.round(img).astype(np.uint8)
-        img = img.reshape(*self.model.vae.input_dim)
-        return img
-
 
 
     def render(self, mode='human', close=False):

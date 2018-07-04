@@ -4,6 +4,7 @@ from keras.layers import Input, Conv2D, Flatten, Dense, Conv2DTranspose, Lambda,
 from keras.models import Model
 from keras import backend as K
 from keras.callbacks import EarlyStopping
+from keras.optimizers import Adam
 
 INPUT_DIM = (64,64,3)
 
@@ -22,12 +23,19 @@ CONV_T_ACTIVATIONS = ['relu','relu','relu','sigmoid']
 Z_DIM = 32
 
 EPOCHS = 1
-BATCH_SIZE = 32
+BATCH_SIZE = 100
+LEARNING_RATE = 0.0001
+KL_TOLERANCE = 0.5
 
 def sampling(args):
-    z_mean, z_log_var = args
-    epsilon = K.random_normal(shape=(K.shape(z_mean)[0], Z_DIM), mean=0.,stddev=1.)
-    return z_mean + K.exp(z_log_var / 2) * epsilon
+    z_mean, z_sigma = args
+    epsilon = K.random_normal(shape=K.shape(z_sigma), mean=0.,stddev=1.)
+    return z_mean + z_sigma * epsilon
+
+
+def convert_to_sigma(z_log_var):
+    return K.exp(z_log_var / 2)
+
 
 def random_batch(data_mu, data_logvar):
     indices = np.random.permutation(N_data)[0:batch_size]
@@ -48,6 +56,8 @@ class VAE():
 
         self.input_dim = INPUT_DIM
         self.z_dim = Z_DIM
+        self.learning_rate = LEARNING_RATE
+        self.kl_tolerance = KL_TOLERANCE
 
 
     def _build(self):
@@ -61,8 +71,9 @@ class VAE():
 
         vae_z_mean = Dense(Z_DIM)(vae_z_in)
         vae_z_log_var = Dense(Z_DIM)(vae_z_in)
+        vae_z_sigma = Lambda(convert_to_sigma)(vae_z_log_var)
 
-        vae_z = Lambda(sampling)([vae_z_mean, vae_z_log_var])
+        vae_z = Lambda(sampling)([vae_z_mean, vae_z_sigma])
         vae_z_input = Input(shape=(Z_DIM,))
 
         # we instantiate these layers separately so as to reuse them later
@@ -101,19 +112,24 @@ class VAE():
         
 
         def vae_r_loss(y_true, y_pred):
+            ######## y_true.shape = (batch size, 3, 64, 64)
 
-            y_true_flat = K.flatten(y_true)
-            y_pred_flat = K.flatten(y_pred)
+            # y_true_flat = K.flatten(y_true)
+            # y_pred_flat = K.flatten(y_pred)
 
-            return 100 * K.mean(K.square(y_true_flat - y_pred_flat), axis = -1)
+            r_loss = K.sum(K.square(y_true - y_pred), axis = [1,2,3])
+            return r_loss
 
         def vae_kl_loss(y_true, y_pred):
-            return - 0.5 * K.mean(1 + vae_z_log_var - K.square(vae_z_mean) - K.exp(vae_z_log_var), axis = -1)
+            kl_loss = - 0.5 * K.sum(1 + vae_z_log_var - K.square(vae_z_mean) - K.exp(vae_z_log_var), axis = -1)
+            kl_loss = K.maximum(kl_loss, KL_TOLERANCE * Z_DIM)
+            return kl_loss
 
         def vae_loss(y_true, y_pred):
             return vae_r_loss(y_true, y_pred) + vae_kl_loss(y_true, y_pred)
-            
-        vae.compile(optimizer='rmsprop', loss = vae_loss,  metrics = [vae_r_loss, vae_kl_loss])
+        
+        opti = Adam(lr=LEARNING_RATE)
+        vae.compile(optimizer=opti, loss = vae_loss,  metrics = [vae_r_loss, vae_kl_loss])
 
         return (vae,vae_encoder, vae_encoder_mu_log_var, vae_decoder)
 
@@ -121,54 +137,19 @@ class VAE():
     def set_weights(self, filepath):
         self.model.load_weights(filepath)
 
-    def train(self, data, validation_split = 0.2):
-
-        earlystop = EarlyStopping(monitor='val_loss', min_delta=0.0001, patience=5, verbose=1, mode='auto')
-        callbacks_list = [earlystop]
+    def train(self, data):
 
         self.model.fit(data, data,
                 shuffle=True,
                 epochs=EPOCHS,
-                batch_size=BATCH_SIZE,
-                validation_split=validation_split,
-                callbacks=callbacks_list)
+                batch_size=BATCH_SIZE)
         
         self.model.save_weights('./vae/weights.h5')
 
     def save_weights(self, filepath):
         self.model.save_weights(filepath)
 
-    def generate_rnn_data(self, obs_data, action_data, reward_data, done_data):
 
-        rnn_input = []
-        rnn_output = []
-        initial_mu = []
-        initial_logvar = []
-
-        for obs, act, rew, done in zip(obs_data, action_data, reward_data, done_data):    
-
-            rew = np.where(rew>0, 1, 0)
-            done = done.astype(int) 
-
-            mu, logvar = self.encoder_mu_log_var.predict(np.array(obs))
-            s = logvar.shape
-            rnn_z_input = mu + np.exp(logvar/2.0) * np.random.randn(*s)
-
-            conc_in = [np.concatenate([x, y]) for x,y in zip(rnn_z_input, act)]
-            conc_out = [np.concatenate([x, [y], [int(z)]]) for x,y, z in zip(rnn_z_input, rew, done)]
-
-            rnn_input.append(conc_in[:-1])
-            rnn_output.append(np.array(conc_out[1:]))
-            initial_mu.append(mu[0, :])
-            initial_logvar.append(logvar[0, :])
-
-        rnn_input = np.array(rnn_input)
-        rnn_output = np.array(rnn_output)
-        initial_mu = np.array(initial_mu)
-        initial_logvar = np.array(initial_logvar)
-
-    
-        return (rnn_input, rnn_output, initial_mu, initial_logvar)
     
 
 
