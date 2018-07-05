@@ -124,7 +124,7 @@ class RNN():
 	def train(self, rnn_input, rnn_output):
 
 		self.model.fit(rnn_input, rnn_output,
-			shuffle=True,
+			shuffle=False,
 			epochs=1,
 			batch_size=1)
 
