@@ -50,7 +50,7 @@ def main(args):
 					mu_data = np.concatenate([mu_data, new_mu])
 					log_var_data = np.concatenate([log_var_data, new_log_var])
 					action_data = np.concatenate([action_data, new_action])
-					rew_data = np.concatenate([reward_data, new_reward])
+					rew_data = np.concatenate([rew_data, new_reward])
 					done_data = np.concatenate([done_data, new_done])
 				else:
 					mu_data = new_mu

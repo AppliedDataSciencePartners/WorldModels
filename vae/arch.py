@@ -22,7 +22,7 @@ CONV_T_ACTIVATIONS = ['relu','relu','relu','sigmoid']
 
 Z_DIM = 32
 
-EPOCHS = 1
+EPOCHS = 10
 BATCH_SIZE = 100
 LEARNING_RATE = 0.0001
 KL_TOLERANCE = 0.5
