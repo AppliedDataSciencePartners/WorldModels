@@ -68,9 +68,9 @@ def main(args):
 			rnn_input = np.concatenate([z[:, :-1, :], action[:, :-1, :]], axis = 2)
 			rnn_output = np.concatenate([z[:, 1:, :], rew[:, 1:, :], done[:, 1:, :]], axis = 2)
 
-			if epoch == 0:
-				np.save('./data/rnn_input_' + str(epoch), rnn_input)
-				np.save('./data/rnn_output_' + str(epoch), rnn_output)
+			
+			np.save('./data/rnn_input_' + str(epoch), rnn_input)
+			np.save('./data/rnn_output_' + str(epoch), rnn_output)
 
 			rnn.train(rnn_input, rnn_output)
 
