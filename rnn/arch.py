@@ -7,6 +7,7 @@ from keras import backend as K
 from keras.callbacks import EarlyStopping
 
 from keras import losses
+from keras.optimizers import Adam
 
 import tensorflow as tf
 
@@ -19,13 +20,19 @@ GAUSSIAN_MIXTURES = 5
 BATCH_SIZE =100
 EPOCHS = 1000
 
-RESTART_FACTOR = 1
-REWARD_FACTOR = 1
 
+REWARD_FACTOR = 0
+RESTART_FACTOR = 0
+
+LEARNING_RATE = 0.001
+# MIN_LEARNING_RATE = 0.001
+# DECAY_RATE = 1.0
 
 
 class RNN():
-	def __init__(self):
+	def __init__(self): #, learning_rate = 0.001
+		
+
 		self.models = self._build()
 		self.model = self.models[0]
 		self.forward = self.models[1]
@@ -37,6 +44,7 @@ class RNN():
 		self.reward_factor = REWARD_FACTOR
 		self.batch_size = BATCH_SIZE
 		self.epochs = EPOCHS
+		self.learning_rate = LEARNING_RATE
 
 
 	def _build(self):
@@ -65,14 +73,13 @@ class RNN():
 			z_true, rew_true, done_true = self.get_responses(y_true)
 
 			d = GAUSSIAN_MIXTURES * Z_DIM
-			z_pred = y_pred[:,:,:3*d]
-
+			z_pred = y_pred[:,:,:(3*d)]
 			z_pred = K.reshape(z_pred, [-1, GAUSSIAN_MIXTURES * 3])
-
 
 			log_pi, mu, log_sigma = self.get_mixture_coef(z_pred)
 
 			flat_target_data = K.reshape(z_true,[-1, 1])
+
 			z_loss = log_pi + self.tf_lognormal(flat_target_data, mu, log_sigma)
 			z_loss = -K.log(K.sum(K.exp(z_loss), 1, keepdims=True))
 
@@ -91,7 +98,7 @@ class RNN():
 			
 			rew_loss = K.mean(rew_loss)
 
-			return rew_loss
+			return REWARD_FACTOR * rew_loss
 
 		def rnn_done_loss(y_true, y_pred):
 			z_true, rew_true, done_true = self.get_responses(y_true)
@@ -102,7 +109,7 @@ class RNN():
 			done_loss = K.binary_crossentropy(done_true, done_pred)
 			done_loss = K.mean(done_loss)
 
-			return done_loss
+			return RESTART_FACTOR * done_loss
 
 
 		def rnn_loss(y_true, y_pred):
@@ -111,10 +118,11 @@ class RNN():
 			rew_loss = rnn_rew_loss(y_true, y_pred)
 			done_loss = rnn_done_loss(y_true, y_pred)
 
-			return z_loss + REWARD_FACTOR * rew_loss + RESTART_FACTOR * done_loss  #+ rnn_kl_loss(y_true, y_pred)
+			return z_loss + rew_loss + done_loss  #+ rnn_kl_loss(y_true, y_pred)
 
-
-		rnn.compile(loss=rnn_loss, optimizer='rmsprop', metrics = [rnn_z_loss, rnn_rew_loss, rnn_done_loss])
+		opti = Adam(lr=LEARNING_RATE)
+		rnn.compile(loss=rnn_loss, optimizer=opti, metrics = [rnn_z_loss, rnn_rew_loss, rnn_done_loss])
+		# rnn.compile(loss=rnn_loss, optimizer='rmsprop', metrics = [rnn_z_loss, rnn_rew_loss, rnn_done_loss])
 
 		return (rnn,forward)
 
@@ -128,7 +136,6 @@ class RNN():
 			epochs=1,
 			batch_size=1)
 
-		self.model.save_weights('./rnn/weights.h5')
 
 	def save_weights(self, filepath):
 		self.model.save_weights(filepath)
@@ -144,43 +151,16 @@ class RNN():
 
 	def get_mixture_coef(self, z_pred):
 
-		# d = GAUSSIAN_MIXTURES
-
-		# y_pred = K.reshape(y_pred, [-1, 3*GAUSSIAN_MIXTURES])
-		
-		# rollout_length = K.shape(y_pred)[1]
-		
-		# log_pi = y_pred[:,:d]
-		# mu = y_pred[:,d:(2*d)]
-		# log_sigma = y_pred[:,(2*d):(3*d)]
-
 		log_pi, mu, log_sigma = tf.split(z_pred, 3, 1)
-		
-
-		# log_pi = K.reshape(log_pi, [-1, rollout_length, GAUSSIAN_MIXTURES, Z_DIM])
-		# mu = K.reshape(mu, [-1, rollout_length, GAUSSIAN_MIXTURES, Z_DIM])
-		# log_sigma = K.reshape(log_sigma, [-1, rollout_length, GAUSSIAN_MIXTURES, Z_DIM])
-
 		log_pi = log_pi - K.log(K.sum(K.exp(log_pi), axis = 1, keepdims = True))
-		# sigma = K.exp(log_sigma)
 
 		return log_pi, mu, log_sigma
 
 
-	def tf_lognormal(self, y_true, mu, log_sigma):
+	def tf_lognormal(self, z_true, mu, log_sigma):
 
 		logSqrtTwoPI = np.log(np.sqrt(2.0 * np.pi))
-		return -0.5 * ((y_true - mu) / K.exp(log_sigma)) ** 2 - log_sigma - logSqrtTwoPI
+		return -0.5 * ((z_true - mu) / K.exp(log_sigma)) ** 2 - log_sigma - logSqrtTwoPI
 
 
-	def get_pi_idx(self, x, pdf):
-		# samples from a categorial distribution
-		N = pdf.shape[0]
-		accumulate = 0
-		for i in range(0, N):
-			accumulate += pdf[i]
-		if K.eval(K.greater(accumulate, x)):
-			return i
-		print('error with sampling ensemble')
-		return -1
 

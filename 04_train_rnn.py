@@ -5,6 +5,11 @@ import argparse
 import numpy as np
 
 
+# LEARNING_RATE = 0.001
+# MIN_LEARNING_RATE = 0.001
+
+
+
 def random_batch(data_mu, data_logvar, data_action, data_rew, data_done, batch_size):
 		N_data = len(data_mu)
 		indices = np.random.permutation(N_data)[0:batch_size]
@@ -16,7 +21,7 @@ def random_batch(data_mu, data_logvar, data_action, data_rew, data_done, batch_s
 		done = data_done[indices]
 
 		s = logvar.shape
-		z = mu + np.exp(logvar/2.0) * np.random.randn(*s) * 0.2
+		z = mu + np.exp(logvar/2.0) * np.random.randn(*s)
 
 		rew = np.expand_dims(rew, axis=2)
 		done = np.expand_dims(done, axis=2)
@@ -29,7 +34,7 @@ def main(args):
 		max_batch = args.max_batch
 		new_model = args.new_model
 
-		rnn = RNN()
+		rnn = RNN() #learning_rate = LEARNING_RATE
 
 		if not new_model:
 				try:
@@ -72,7 +77,12 @@ def main(args):
 			np.save('./data/rnn_input_' + str(epoch), rnn_input)
 			np.save('./data/rnn_output_' + str(epoch), rnn_output)
 
+			# curr_learning_rate = (LEARNING_RATE-MIN_LEARNING_RATE) * (DECAY_RATE) ** epoch + hps.min_learning_rate
+
+
 			rnn.train(rnn_input, rnn_output)
+
+			rnn.model.save_weights('./rnn/weights_' + str(epoch) +  '.h5')
 
 
 
