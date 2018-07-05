@@ -19,6 +19,8 @@ GAUSSIAN_MIXTURES = 5
 BATCH_SIZE =100
 EPOCHS = 5
 
+RESTART_FACTOR = 1
+REWARD_FACTOR = 1
 
 
 
@@ -31,8 +33,11 @@ class RNN():
 		self.action_dim = ACTION_DIM
 		self.hidden_units = HIDDEN_UNITS
 		self.gaussian_mixtures = GAUSSIAN_MIXTURES
+		self.restart_factor = RESTART_FACTOR
+		self.reward_factor = REWARD_FACTOR
 		self.batch_size = BATCH_SIZE
 		self.epochs = EPOCHS
+
 
 	def _build(self):
 
@@ -56,58 +61,57 @@ class RNN():
 		#### LOSS FUNCTION
 
 		def rnn_z_loss(y_true, y_pred):
-
-			pi, mu, sigma, rew_pred, done_pred = self.get_mixture_coef(y_pred)
+			
 			z_true, rew_true, done_true = self.get_responses(y_true)
-		
-		
-			z_loss = self.tf_normal(z_true, mu, sigma, pi)
-			z_loss = -K.log(z_loss + 1e-8)
-			z_loss = K.mean(z_loss, axis = (1,2)) # mean over rollout length and z dim
+
+			d = GAUSSIAN_MIXTURES * Z_DIM
+			z_pred = y_pred[:,:,:3*d]
+
+			z_pred = K.reshape(z_pred, [-1, GAUSSIAN_MIXTURES * 3])
+
+
+			log_pi, mu, log_sigma = self.get_mixture_coef(z_pred)
+
+			flat_target_data = K.reshape(z_true,[-1, 1])
+			z_loss = log_pi + self.tf_lognormal(flat_target_data, mu, log_sigma)
+			z_loss = -K.log(K.sum(K.exp(z_loss), 1, keepdims=True))
+
+			z_loss = K.mean(z_loss) # mean over rollout length and z dim
 
 			return z_loss
 
 		def rnn_rew_loss(y_true, y_pred):
-
-			pi, mu, sigma, rew_pred, done_pred = self.get_mixture_coef(y_pred)
+		
 			z_true, rew_true, done_true = self.get_responses(y_true)
 
+			d = GAUSSIAN_MIXTURES * Z_DIM
+			reward_pred = y_pred[:,:,(3*d):(3*d+1)]
 
-			rew_loss =  K.binary_crossentropy(rew_true, rew_pred)
-			rew_loss = K.mean(rew_loss, axis = (1,2))
+			rew_loss =  K.binary_crossentropy(rew_true, reward_pred)
+			
+			rew_loss = K.mean(rew_loss)
 
 			return rew_loss
 
 		def rnn_done_loss(y_true, y_pred):
-
-			pi, mu, sigma, rew_pred, done_pred = self.get_mixture_coef(y_pred)
 			z_true, rew_true, done_true = self.get_responses(y_true)
+
+			d = GAUSSIAN_MIXTURES * Z_DIM
+			done_pred = y_pred[:,:,(3*d+1):]
 		
 			done_loss = K.binary_crossentropy(done_true, done_pred)
-			done_loss = K.mean(done_loss, axis = (1,2))
+			done_loss = K.mean(done_loss)
 
 			return done_loss
 
 
-		# def rnn_kl_loss(y_true, y_pred):
-
-		# 	pi, mu, sigma, rew_pred, done_pred = self.get_mixture_coef(y_pred)
-
-		# 	mu = K.flatten(mu)
-		# 	sigma = K.flatten(sigma)
-
-		# 	kl_loss = - 0.5 * K.mean(1 + K.log(K.square(sigma)) - K.square(mu) - K.square(sigma), axis = -1)
-		# 	return kl_loss
-
 		def rnn_loss(y_true, y_pred):
-			pi, mu, sigma, rew_pred, done_pred = self.get_mixture_coef(y_pred)
-			z_true, rew_true, done_true = self.get_responses(y_true)
 
 			z_loss = rnn_z_loss(y_true, y_pred)
 			rew_loss = rnn_rew_loss(y_true, y_pred)
 			done_loss = rnn_done_loss(y_true, y_pred)
 
-			return z_loss + rew_loss + done_loss  #+ rnn_kl_loss(y_true, y_pred)
+			return z_loss + REWARD_FACTOR * rew_loss + RESTART_FACTOR * done_loss  #+ rnn_kl_loss(y_true, y_pred)
 
 
 		rnn.compile(loss=rnn_loss, optimizer='rmsprop', metrics = [rnn_z_loss, rnn_rew_loss, rnn_done_loss])
@@ -138,44 +142,35 @@ class RNN():
 		return z_true, rew_true, done_true
 
 
-	def get_mixture_coef(self, y_pred):
+	def get_mixture_coef(self, z_pred):
+
+		# d = GAUSSIAN_MIXTURES
+
+		# y_pred = K.reshape(y_pred, [-1, 3*GAUSSIAN_MIXTURES])
 		
-		d = GAUSSIAN_MIXTURES * Z_DIM
+		# rollout_length = K.shape(y_pred)[1]
 		
-		rollout_length = K.shape(y_pred)[1]
+		# log_pi = y_pred[:,:d]
+		# mu = y_pred[:,d:(2*d)]
+		# log_sigma = y_pred[:,(2*d):(3*d)]
+
+		log_pi, mu, log_sigma = tf.split(z_pred, 3, 1)
 		
-		pi = y_pred[:,:,:d]
-		mu = y_pred[:,:,d:(2*d)]
-		log_sigma = y_pred[:,:,(2*d):(3*d)]
-		reward = y_pred[:,:,(3*d):(3*d+1)]
-		done = y_pred[:,:,(3*d+1):]
 
-		pi = K.reshape(pi, [-1, rollout_length, GAUSSIAN_MIXTURES, Z_DIM])
-		mu = K.reshape(mu, [-1, rollout_length, GAUSSIAN_MIXTURES, Z_DIM])
-		log_sigma = K.reshape(log_sigma, [-1, rollout_length, GAUSSIAN_MIXTURES, Z_DIM])
+		# log_pi = K.reshape(log_pi, [-1, rollout_length, GAUSSIAN_MIXTURES, Z_DIM])
+		# mu = K.reshape(mu, [-1, rollout_length, GAUSSIAN_MIXTURES, Z_DIM])
+		# log_sigma = K.reshape(log_sigma, [-1, rollout_length, GAUSSIAN_MIXTURES, Z_DIM])
 
-		pi = K.exp(pi) / K.sum(K.exp(pi), axis=2, keepdims=True)
-		sigma = K.exp(log_sigma)
+		log_pi = log_pi - K.log(K.sum(K.exp(log_pi), axis = 1, keepdims = True))
+		# sigma = K.exp(log_sigma)
 
-		return pi, mu, sigma, reward, done
+		return log_pi, mu, log_sigma
 
 
-	def tf_normal(self, y_true, mu, sigma, pi):
+	def tf_lognormal(self, y_true, mu, log_sigma):
 
-		rollout_length = K.shape(y_true)[1]
-		y_true = K.tile(y_true,(1,1,GAUSSIAN_MIXTURES))
-		y_true = K.reshape(y_true, [-1, rollout_length, GAUSSIAN_MIXTURES,Z_DIM])
-
-		oneDivSqrtTwoPI = 1 / math.sqrt(2*math.pi)
-		result = y_true - mu
-	#   result = K.permute_dimensions(result, [2,1,0])
-		result = result * (1 / (sigma + 1e-8))
-		result = -K.square(result)/2
-		result = K.exp(result) * (1/(sigma + 1e-8))*oneDivSqrtTwoPI
-		result = result * pi
-		result = K.sum(result, axis=2) #### sum over gaussians
-		#result = K.prod(result, axis=2) #### multiply over latent dims
-		return result
+		logSqrtTwoPI = np.log(np.sqrt(2.0 * np.pi))
+		return -0.5 * ((y_true - mu) / K.exp(log_sigma)) ** 2 - log_sigma - logSqrtTwoPI
 
 
 	def get_pi_idx(self, x, pdf):
