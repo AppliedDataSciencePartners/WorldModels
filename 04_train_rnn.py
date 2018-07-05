@@ -73,9 +73,9 @@ def main(args):
 			rnn_input = np.concatenate([z[:, :-1, :], action[:, :-1, :]], axis = 2)
 			rnn_output = np.concatenate([z[:, 1:, :], rew[:, 1:, :], done[:, 1:, :]], axis = 2)
 
-			
-			np.save('./data/rnn_input_' + str(epoch), rnn_input)
-			np.save('./data/rnn_output_' + str(epoch), rnn_output)
+			if epoch == 0:
+				np.save('./data/rnn_input_' + str(epoch), rnn_input)
+				np.save('./data/rnn_output_' + str(epoch), rnn_output)
 
 			# curr_learning_rate = (LEARNING_RATE-MIN_LEARNING_RATE) * (DECAY_RATE) ** epoch + hps.min_learning_rate
 
