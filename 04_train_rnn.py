@@ -21,7 +21,7 @@ def random_batch(data_mu, data_logvar, data_action, data_rew, data_done, batch_s
 		done = data_done[indices]
 
 		s = logvar.shape
-		z = mu + np.exp(logvar/2.0) * np.random.randn(*s) * 0.25
+		z = mu + np.exp(logvar/2.0) * np.random.randn(*s)
 
 		rew = np.expand_dims(rew, axis=2)
 		done = np.expand_dims(done, axis=2)
