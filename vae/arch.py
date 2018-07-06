@@ -49,6 +49,7 @@ class VAE():
         self.z_dim = Z_DIM
         self.learning_rate = LEARNING_RATE
         self.kl_tolerance = KL_TOLERANCE
+        self.epochs = EPOCHS
 
 
     def _build(self):
@@ -133,7 +134,7 @@ class VAE():
 
         self.model.fit(data, data,
                 shuffle=True,
-                epochs=EPOCHS,
+                epochs=1,
                 batch_size=BATCH_SIZE)
         
     def save_weights(self, filepath):
