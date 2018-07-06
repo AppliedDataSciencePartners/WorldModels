@@ -22,7 +22,7 @@ CONV_T_ACTIVATIONS = ['relu','relu','relu','sigmoid']
 
 Z_DIM = 32
 
-EPOCHS = 1
+EPOCHS = 3
 BATCH_SIZE = 100
 LEARNING_RATE = 0.0001
 KL_TOLERANCE = 0.5
@@ -36,15 +36,6 @@ def sampling(args):
 def convert_to_sigma(z_log_var):
     return K.exp(z_log_var / 2)
 
-
-def random_batch(data_mu, data_logvar):
-    indices = np.random.permutation(N_data)[0:batch_size]
-    mu = data_mu[indices]
-    logvar = data_logvar[indices]
-    action = data_action[indices]
-    s = logvar.shape
-    z = mu + np.exp(logvar/2.0) * np.random.randn(*s)
-    return z, action
 
 class VAE():
     def __init__(self):
@@ -145,8 +136,6 @@ class VAE():
                 epochs=EPOCHS,
                 batch_size=BATCH_SIZE)
         
-        
-
     def save_weights(self, filepath):
         self.model.save_weights(filepath)
 

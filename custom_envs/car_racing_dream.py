@@ -29,9 +29,9 @@ Z_DIM = 32
 
 
 initial_mu = np.load('./data/initial_mu_' + str(0) + '.npy')
-initial_logvar = np.load('./data/initial_logvar_' + str(0) + '.npy')
+initial_log_var = np.load('./data/initial_log_var_' + str(0) + '.npy')
 
-initial_mu_logvar = [list(elem) for elem in zip(initial_mu, initial_logvar)]
+initial_mu_logvar = [list(elem) for elem in zip(initial_mu, initial_log_var)]
 
 
 
