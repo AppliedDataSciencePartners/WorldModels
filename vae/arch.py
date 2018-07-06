@@ -122,8 +122,8 @@ class VAE():
 
         def vae_kl_loss(y_true, y_pred):
 
-            kl_loss = - 0.5 * 10 * K.sum(1 + vae_z_log_var - K.square(vae_z_mean) - K.exp(vae_z_log_var), axis = 1)
-            # kl_loss = K.maximum(kl_loss, KL_TOLERANCE * Z_DIM)
+            kl_loss = - 0.5 * K.sum(1 + vae_z_log_var - K.square(vae_z_mean) - K.exp(vae_z_log_var), axis = 1)
+            kl_loss = K.maximum(kl_loss, KL_TOLERANCE * Z_DIM)
             return kl_loss
 
         def vae_loss(y_true, y_pred):
