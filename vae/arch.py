@@ -117,12 +117,12 @@ class VAE():
             # y_true_flat = K.flatten(y_true)
             # y_pred_flat = K.flatten(y_pred)
 
-            r_loss = 1000 * K.mean(K.square(y_true - y_pred), axis = [1,2,3])
+            r_loss = K.sum(K.square(y_true - y_pred), axis = [1,2,3])
             return r_loss
 
         def vae_kl_loss(y_true, y_pred):
-            print(vae_z_log_var.shape)
-            kl_loss = - 0.5 * 1000 * K.mean(1 + vae_z_log_var - K.square(vae_z_mean) - K.exp(vae_z_log_var), axis = 1)
+
+            kl_loss = - 0.5 * 1000 * K.sum(1 + vae_z_log_var - K.square(vae_z_mean) - K.exp(vae_z_log_var), axis = 1)
             # kl_loss = K.maximum(kl_loss, KL_TOLERANCE * Z_DIM)
             return kl_loss
 
