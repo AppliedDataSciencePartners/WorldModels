@@ -22,7 +22,7 @@ CONV_T_ACTIVATIONS = ['relu','relu','relu','sigmoid']
 
 Z_DIM = 32
 
-EPOCHS = 10
+EPOCHS = 1
 BATCH_SIZE = 100
 LEARNING_RATE = 0.0001
 KL_TOLERANCE = 0.5
@@ -122,7 +122,7 @@ class VAE():
 
         def vae_kl_loss(y_true, y_pred):
 
-            kl_loss = - 0.5 * 100 * K.sum(1 + vae_z_log_var - K.square(vae_z_mean) - K.exp(vae_z_log_var), axis = 1)
+            kl_loss = - 0.5 * 10 * K.sum(1 + vae_z_log_var - K.square(vae_z_mean) - K.exp(vae_z_log_var), axis = 1)
             # kl_loss = K.maximum(kl_loss, KL_TOLERANCE * Z_DIM)
             return kl_loss
 
@@ -145,7 +145,7 @@ class VAE():
                 epochs=EPOCHS,
                 batch_size=BATCH_SIZE)
         
-        self.model.save_weights('./vae/weights.h5')
+        
 
     def save_weights(self, filepath):
         self.model.save_weights(filepath)

@@ -39,6 +39,7 @@ def main(args):
     if first_item == False: # i.e. data has been found for this batch number
       data = np.array([item for obs in data for item in obs])
       vae.train(data)
+      vae.model.save_weights('./vae/weights.h5')
     else:
       print('no data found for batch number {}'.format(batch_num))
 
