@@ -37,11 +37,11 @@ def main(args):
 		rnn = RNN() #learning_rate = LEARNING_RATE
 
 		if not new_model:
-				try:
-					rnn.set_weights('./rnn/weights.h5')
-				except:
-					print("Either set --new_model or ensure ./rnn/weights.h5 exists")
-					raise
+			try:
+				rnn.set_weights('./rnn/weights_46.h5')
+			except:
+				print("Either set --new_model or ensure ./rnn/weights.h5 exists")
+				raise
 
 		for batch_num in range(start_batch, max_batch + 1):
 				print('Building batch {}...'.format(batch_num))
