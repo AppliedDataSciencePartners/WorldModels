@@ -18,7 +18,7 @@ HIDDEN_UNITS = 256
 GAUSSIAN_MIXTURES = 5
 
 BATCH_SIZE =100
-EPOCHS = 1000
+EPOCHS = 2500
 
 REWARD_FACTOR = 0
 RESTART_FACTOR = 0
@@ -133,7 +133,7 @@ class RNN():
 		self.model.fit(rnn_input, rnn_output,
 			shuffle=False,
 			epochs=1,
-			batch_size=1)
+			batch_size=BATCH_SIZE)
 
 
 	def save_weights(self, filepath):
