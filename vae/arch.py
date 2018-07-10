@@ -14,7 +14,7 @@ CONV_ACTIVATIONS = ['relu','relu','relu','relu']
 
 DENSE_SIZE = 1024
 
-CONV_T_FILTERS = [128,64,32,3]
+CONV_T_FILTERS = [64,64,32,3]
 CONV_T_KERNEL_SIZES = [5,5,6,6]
 CONV_T_STRIDES = [2,2,2,2]
 CONV_T_ACTIVATIONS = ['relu','relu','relu','sigmoid']
