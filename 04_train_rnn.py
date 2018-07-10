@@ -77,7 +77,6 @@ def main(args):
 				np.save('./data/rnn_input.npy', rnn_input)
 				np.save('./data/rnn_output.npy', rnn_output)
 
-			print(rnn_output.shape)
 			rnn.train(rnn_input, rnn_output)
 
 			if epoch % 10 == 0:
