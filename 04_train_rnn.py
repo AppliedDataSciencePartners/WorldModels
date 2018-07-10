@@ -38,7 +38,7 @@ def main(args):
 
 		if not new_model:
 			try:
-				rnn.set_weights('./rnn/weights_46.h5')
+				rnn.set_weights('./rnn/weights.h5')
 			except:
 				print("Either set --new_model or ensure ./rnn/weights.h5 exists")
 				raise
@@ -71,18 +71,20 @@ def main(args):
 			z, action, rew ,done = random_batch(mu_data, log_var_data, action_data, rew_data, done_data, rnn.batch_size)
 			
 			rnn_input = np.concatenate([z[:, :-1, :], action[:, :-1, :]], axis = 2)
-			rnn_output = np.concatenate([z[:, 1:, :], rew[:, 1:, :], done[:, 1:, :]], axis = 2)
+			rnn_output = np.concatenate([z[:, 1:, :], rew[:, 1:, :]], axis = 2) #, done[:, 1:, :]
 
 			if epoch == 0:
-				np.save('./data/rnn_input_' + str(epoch), rnn_input)
-				np.save('./data/rnn_output_' + str(epoch), rnn_output)
+				np.save('./data/rnn_input.npy', rnn_input)
+				np.save('./data/rnn_output.npy', rnn_output)
 
-			# curr_learning_rate = (LEARNING_RATE-MIN_LEARNING_RATE) * (DECAY_RATE) ** epoch + hps.min_learning_rate
-
-
+			print(rnn_output.shape)
 			rnn.train(rnn_input, rnn_output)
 
-			rnn.model.save_weights('./rnn/weights_' + str(epoch) +  '.h5')
+			if epoch % 10 == 0:
+
+				rnn.model.save_weights('./rnn/weights.h5')
+
+		rnn.model.save_weights('./rnn/weights.h5')
 
 
 

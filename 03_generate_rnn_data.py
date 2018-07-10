@@ -28,12 +28,6 @@ def encode_batch(vae, obs_data, action_data, rew_data, done_data):
         initial_mu.append(mu[0, :])
         initial_log_var.append(log_var[0, :])
 
-        # mu_out.append(mu[50:])
-        # log_var_out.append(log_var[50:])
-        # action_out.append(act[50:])
-        # reward_out.append(rew[50:])
-        # done_out.append(done[50:])
-
         mu_out.append(mu)
         log_var_out.append(log_var)
         action_out.append(act)

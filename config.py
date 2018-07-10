@@ -7,7 +7,7 @@ test_envs = ['car_racing']
 def generate_data_action(t, current_action):
 #     a = env.action_space.sample()
 #     return a
-    if t < 60:
+    if t < 10:
         return np.array([0,1,0])
     
     if t % 5 > 0:

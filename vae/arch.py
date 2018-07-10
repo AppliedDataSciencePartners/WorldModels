@@ -2,20 +2,19 @@ import numpy as np
 
 from keras.layers import Input, Conv2D, Flatten, Dense, Conv2DTranspose, Lambda, Reshape
 from keras.models import Model
-from keras import backend as K
-from keras.callbacks import EarlyStopping
 from keras.optimizers import Adam
+from keras import backend as K
 
 INPUT_DIM = (64,64,3)
 
-CONV_FILTERS = [32,64,64,128]
+CONV_FILTERS = [32,64,64, 128]
 CONV_KERNEL_SIZES = [4,4,4,4]
 CONV_STRIDES = [2,2,2,2]
 CONV_ACTIVATIONS = ['relu','relu','relu','relu']
 
 DENSE_SIZE = 1024
 
-CONV_T_FILTERS = [64,64,32,3]
+CONV_T_FILTERS = [128,64,32,3]
 CONV_T_KERNEL_SIZES = [5,5,6,6]
 CONV_T_STRIDES = [2,2,2,2]
 CONV_T_ACTIVATIONS = ['relu','relu','relu','sigmoid']
@@ -66,26 +65,27 @@ class VAE():
         vae_z_sigma = Lambda(convert_to_sigma)(vae_z_log_var)
 
         vae_z = Lambda(sampling)([vae_z_mean, vae_z_sigma])
+        
         vae_z_input = Input(shape=(Z_DIM,))
 
-        # we instantiate these layers separately so as to reuse them later
+        #### DECODER: we instantiate these layers separately so as to reuse them later
         vae_dense = Dense(1024)
-        vae_dense_model = vae_dense(vae_z)
-
         vae_z_out = Reshape((1,1,DENSE_SIZE))
+        vae_d1 = Conv2DTranspose(filters = CONV_T_FILTERS[0], kernel_size = CONV_T_KERNEL_SIZES[0] , strides = CONV_T_STRIDES[0], activation=CONV_T_ACTIVATIONS[0])
+        vae_d2 = Conv2DTranspose(filters = CONV_T_FILTERS[1], kernel_size = CONV_T_KERNEL_SIZES[1] , strides = CONV_T_STRIDES[1], activation=CONV_T_ACTIVATIONS[1])
+        vae_d3 = Conv2DTranspose(filters = CONV_T_FILTERS[2], kernel_size = CONV_T_KERNEL_SIZES[2] , strides = CONV_T_STRIDES[2], activation=CONV_T_ACTIVATIONS[2])
+        vae_d4 = Conv2DTranspose(filters = CONV_T_FILTERS[3], kernel_size = CONV_T_KERNEL_SIZES[3] , strides = CONV_T_STRIDES[3], activation=CONV_T_ACTIVATIONS[3])
+        
+        #### DECODER IN FULL MODEL
+        vae_dense_model = vae_dense(vae_z)
         vae_z_out_model = vae_z_out(vae_dense_model)
 
-        vae_d1 = Conv2DTranspose(filters = CONV_T_FILTERS[0], kernel_size = CONV_T_KERNEL_SIZES[0] , strides = CONV_T_STRIDES[0], activation=CONV_T_ACTIVATIONS[0])
         vae_d1_model = vae_d1(vae_z_out_model)
-        vae_d2 = Conv2DTranspose(filters = CONV_T_FILTERS[1], kernel_size = CONV_T_KERNEL_SIZES[1] , strides = CONV_T_STRIDES[1], activation=CONV_T_ACTIVATIONS[1])
         vae_d2_model = vae_d2(vae_d1_model)
-        vae_d3 = Conv2DTranspose(filters = CONV_T_FILTERS[2], kernel_size = CONV_T_KERNEL_SIZES[2] , strides = CONV_T_STRIDES[2], activation=CONV_T_ACTIVATIONS[2])
         vae_d3_model = vae_d3(vae_d2_model)
-        vae_d4 = Conv2DTranspose(filters = CONV_T_FILTERS[3], kernel_size = CONV_T_KERNEL_SIZES[3] , strides = CONV_T_STRIDES[3], activation=CONV_T_ACTIVATIONS[3])
         vae_d4_model = vae_d4(vae_d3_model)
 
         #### DECODER ONLY
-
         vae_dense_decoder = vae_dense(vae_z_input)
         vae_z_out_decoder = vae_z_out(vae_dense_decoder)
 

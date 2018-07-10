@@ -20,8 +20,8 @@ GAUSSIAN_MIXTURES = 5
 BATCH_SIZE =100
 EPOCHS = 2500
 
-REWARD_FACTOR = 0
-RESTART_FACTOR = 0
+REWARD_FACTOR = 1
+#RESTART_FACTOR = 0
 
 LEARNING_RATE = 0.001
 # MIN_LEARNING_RATE = 0.001
@@ -31,19 +31,19 @@ LEARNING_RATE = 0.001
 class RNN():
 	def __init__(self): #, learning_rate = 0.001
 		
-
-		self.models = self._build()
-		self.model = self.models[0]
-		self.forward = self.models[1]
 		self.z_dim = Z_DIM
 		self.action_dim = ACTION_DIM
 		self.hidden_units = HIDDEN_UNITS
 		self.gaussian_mixtures = GAUSSIAN_MIXTURES
-		self.restart_factor = RESTART_FACTOR
+		#self.restart_factor = RESTART_FACTOR
 		self.reward_factor = REWARD_FACTOR
 		self.batch_size = BATCH_SIZE
 		self.epochs = EPOCHS
 		self.learning_rate = LEARNING_RATE
+
+		self.models = self._build()
+		self.model = self.models[0]
+		self.forward = self.models[1]
 
 
 	def _build(self):
@@ -53,7 +53,7 @@ class RNN():
 		lstm = LSTM(HIDDEN_UNITS, return_sequences=True, return_state = True)
 
 		lstm_output, _ , _ = lstm(rnn_x)
-		mdn = Dense(GAUSSIAN_MIXTURES * (3*Z_DIM) + 2)(lstm_output) #
+		mdn = Dense(GAUSSIAN_MIXTURES * (3*Z_DIM) + 1)(lstm_output) #
 
 		rnn = Model(rnn_x, mdn)
 
@@ -69,7 +69,7 @@ class RNN():
 
 		def rnn_z_loss(y_true, y_pred):
 			
-			z_true, rew_true, done_true = self.get_responses(y_true)
+			z_true, rew_true = self.get_responses(y_true) #, done_true 
 
 			d = GAUSSIAN_MIXTURES * Z_DIM
 			z_pred = y_pred[:,:,:(3*d)]
@@ -88,7 +88,7 @@ class RNN():
 
 		def rnn_rew_loss(y_true, y_pred):
 		
-			z_true, rew_true, done_true = self.get_responses(y_true)
+			z_true, rew_true = self.get_responses(y_true) #, done_true
 
 			d = GAUSSIAN_MIXTURES * Z_DIM
 			reward_pred = y_pred[:,:,(3*d):(3*d+1)]
@@ -99,28 +99,28 @@ class RNN():
 
 			return REWARD_FACTOR * rew_loss
 
-		def rnn_done_loss(y_true, y_pred):
-			z_true, rew_true, done_true = self.get_responses(y_true)
+		# def rnn_done_loss(y_true, y_pred):
+		# 	z_true, rew_true = self.get_responses(y_true) #, done_true
 
-			d = GAUSSIAN_MIXTURES * Z_DIM
-			done_pred = y_pred[:,:,(3*d+1):]
+		# 	d = GAUSSIAN_MIXTURES * Z_DIM
+		# 	done_pred = y_pred[:,:,(3*d+1):]
 		
-			done_loss = K.binary_crossentropy(done_true, done_pred)
-			done_loss = K.mean(done_loss)
+		# 	done_loss = K.binary_crossentropy(done_true, done_pred)
+		# 	done_loss = K.mean(done_loss)
 
-			return RESTART_FACTOR * done_loss
+		#	return RESTART_FACTOR * done_loss
 
 
 		def rnn_loss(y_true, y_pred):
 
 			z_loss = rnn_z_loss(y_true, y_pred)
 			rew_loss = rnn_rew_loss(y_true, y_pred)
-			done_loss = rnn_done_loss(y_true, y_pred)
+			#done_loss = rnn_done_loss(y_true, y_pred)
 
-			return z_loss + rew_loss + done_loss  #+ rnn_kl_loss(y_true, y_pred)
+			return z_loss + rew_loss # + done_loss  #+ rnn_kl_loss(y_true, y_pred)
 
 		opti = Adam(lr=LEARNING_RATE)
-		rnn.compile(loss=rnn_loss, optimizer=opti, metrics = [rnn_z_loss, rnn_rew_loss, rnn_done_loss])
+		rnn.compile(loss=rnn_loss, optimizer=opti, metrics = [rnn_z_loss, rnn_rew_loss]) #, rnn_done_loss
 		# rnn.compile(loss=rnn_loss, optimizer='rmsprop', metrics = [rnn_z_loss, rnn_rew_loss, rnn_done_loss])
 
 		return (rnn,forward)
@@ -143,9 +143,9 @@ class RNN():
 
 		z_true = y_true[:,:,:Z_DIM]
 		rew_true = y_true[:,:,Z_DIM: (Z_DIM + 1) ]
-		done_true = y_true[:,:,(Z_DIM + 1):]
+		# done_true = y_true[:,:,(Z_DIM + 1):]
 
-		return z_true, rew_true, done_true
+		return z_true, rew_true #, done_true
 
 
 	def get_mixture_coef(self, z_pred):
