@@ -1,4 +1,4 @@
-scp david@35.233.143.165:~/WorldModels/controller/car_racing.cma.4.32.es.pk ./controller/car_racing.cma.4.32.es.pk
+scp david@35.233.143.165:~/WorldModels/controller/car_racing.cma.1.16.best.json ./controller/car_racing.cma.1.16.best.json
 scp david@35.233.143.165:~/WorldModels/vae/weights.h5 ./vae/weights.h5
 scp david@35.233.143.165:~/WorldModels/rnn/weights.h5 ./rnn/weights.h5
 
