@@ -31,8 +31,7 @@ Z_DIM = 32
 initial_mu = np.load('./data/initial_mu_' + str(0) + '.npy')
 initial_log_var = np.load('./data/initial_log_var_' + str(0) + '.npy')
 
-initial_mu_logvar = [list(elem) for elem in zip(initial_mu, initial_log_var)]
-
+initial_mu_log_var = [list(elem) for elem in zip(initial_mu, initial_log_var)]
 
 
 def get_pi_idx(x, pdf):
@@ -73,17 +72,16 @@ class CarRacingDream(gym.Env):
         return [seed]
 
 
-    def sample_z(self, mu, sigma):
-        z = mu + sigma * self.np_random.randn(*sigma.shape)
+    def sample_z(self, mu, log_sigma):
+        z =  mu + (np.exp(log_sigma)) * self.np_random.randn(*log_sigma.shape) * 0.75
         return z
 
 
-
     def reset(self):
-        idx = self.np_random.randint(0, len(initial_mu_logvar))
-        init_mu, init_logvar = initial_mu_logvar[idx]
+        idx = self.np_random.randint(0, len(initial_mu_log_var))
+        init_mu, init_log_var = initial_mu_log_var[idx]
 
-        init_sigma = np.exp(init_logvar / 2)
+        init_sigma = np.exp(init_log_var / 2)
 
         self.z = self.sample_z(init_mu, init_sigma)
         self.t = 0
@@ -95,74 +93,66 @@ class CarRacingDream(gym.Env):
             self.viewer = None
 
 
+    def get_mixture_coef(self, z_pred):
 
-    def get_mixture_coef(self, y_pred):
+        log_pi, mu, log_sigma = np.split(z_pred, 3, 1)
+        log_pi = log_pi - np.log(np.sum(np.exp(log_pi), axis = 1, keepdims = True))
 
-        d = GAUSSIAN_MIXTURES * Z_DIM
-        
-        rollout_length = y_pred.shape[1]
-        
-        pi = y_pred[:,:,:d]
-        mu = y_pred[:,:,d:(2*d)]
-        log_sigma = y_pred[:,:,(2*d):(3*d)]
-        reward = y_pred[:,:,(3*d):(3*d+1)]
-        done = y_pred[:,:,(3*d+1):]
-        
-        pi = np.reshape(pi, [-1, rollout_length, GAUSSIAN_MIXTURES, Z_DIM])
-        mu = np.reshape(mu, [-1, rollout_length, GAUSSIAN_MIXTURES, Z_DIM])
-        log_sigma = np.reshape(log_sigma, [-1, rollout_length, GAUSSIAN_MIXTURES, Z_DIM])
-
-        pi = np.exp(pi) / np.sum(np.exp(pi), axis=2, keepdims=True)
-        sigma = np.exp(log_sigma)
-
-        return pi, mu, sigma, reward, done
+        return log_pi, mu, log_sigma
 
     def sample_next_mdn_output(self, action):  
+
+        d = GAUSSIAN_MIXTURES * Z_DIM
 
         z_dim = self.model.rnn.z_dim
 
         input_to_rnn = [np.array([[np.concatenate([self.z, action])]])]
         
-        y_pred = self.model.rnn.model.predict(input_to_rnn)
+        y_pred = self.model.rnn.model.predict(input_to_rnn)[0][0]
+        z_pred = y_pred[:(3*d)]
+        rew_pred = y_pred[3*d]
+        
+        z_pred = np.reshape(z_pred, [-1, GAUSSIAN_MIXTURES * 3])
 
-        pi, mu, sigma, reward, done = self.get_mixture_coef(y_pred)
+        log_pi, mu, sigma = self.get_mixture_coef(z_pred)
 
-        pi = pi[0,0,:,:]
-        mu = mu[0,0,:,:]
-        sigma = sigma[0,0,:,:]
-        reward = reward[0,0,:]
-        done = done[0,0,:]
-
-        chosen_pi = np.zeros(z_dim)
+        chosen_log_pi = np.zeros(z_dim)
         chosen_mu = np.zeros(z_dim)
-        chosen_sigma = np.zeros(z_dim)
+        chosen_log_sigma = np.zeros(z_dim)
+
+        # adjust temperatures
+        logmix2 = np.copy(log_pi)
+        logmix2 -= logmix2.max()
+        logmix2 = np.exp(logmix2)
+        logmix2 /= logmix2.sum(axis=1).reshape(z_dim, 1)
 
         for j in range(z_dim):
-          idx = get_pi_idx(self.np_random.rand(), pi[:,j])
-          chosen_pi[j] = idx
-          chosen_mu[j] = mu[idx, j]
-          chosen_sigma[j] = sigma[idx, j]
+          idx = get_pi_idx(self.np_random.rand(), logmix2[j])
+          chosen_log_pi[j] = idx
+          chosen_mu[j] = mu[j, idx]
+          chosen_log_sigma[j] = sigma[j,idx]
 
-        next_z = self.sample_z(chosen_mu, chosen_sigma)
-
-        if reward > 0:
+        next_z = self.sample_z(chosen_mu, chosen_log_sigma)
+        # print(rew_pred)
+        if rew_pred > 0:
             next_reward = 3.2
         else:
             next_reward = -0.1
 
-        if done > 0:
-            next_done = True
-        else:
-            next_done = False
+        # if done > 0:
+        #     next_done = True
+        # else:
+        #     next_done = False
 
-        return next_z, next_reward, next_done
+        return next_z, next_reward #, next_done
 
 
     def step(self, action):
         # print(self.t)
         self.t += 1
-        next_z, next_reward, next_done = self.sample_next_mdn_output(action)
-        if self.t > 3000:
+        next_z, next_reward = self.sample_next_mdn_output(action) #, next_done
+        next_done = False
+        if self.t > 1000:
           next_done = True
         self.z = next_z
         return next_z, next_reward, next_done, {}
