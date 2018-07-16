@@ -17,6 +17,8 @@ ACTION_DIM = 3
 HIDDEN_UNITS = 256
 GAUSSIAN_MIXTURES = 5
 
+TIMESTEP_SIZE =299
+
 BATCH_SIZE =100
 EPOCHS = 4000
 
@@ -49,7 +51,7 @@ class RNN():
 	def _build(self):
 
 		#### THE MODEL THAT WILL BE TRAINED
-		rnn_x = Input(shape=(None, Z_DIM + ACTION_DIM), batch_shape = (100, Z_DIM + ACTION_DIM))
+		rnn_x = Input(shape=(None, Z_DIM + ACTION_DIM), batch_shape = (BATCH_SIZE, TIMESTEP_SIZE, Z_DIM + ACTION_DIM))
 		lstm = LSTM(HIDDEN_UNITS, return_sequences=True, return_state = True, stateful = True)
 
 		lstm_output_model, _ , _ = lstm(rnn_x)
