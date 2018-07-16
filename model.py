@@ -230,7 +230,7 @@ def simulate(model, num_episode=5, seed=-1, max_len=-1, generate_data_mode = Fal
       obs = config.adjust_obs(obs)
 
       input_to_rnn = [np.array([[np.concatenate([vae_encoded_obs, action])]]),np.array([model.hidden]),np.array([model.cell_values])]
-      h, c = model.rnn.forward.predict(input_to_rnn)
+      zs, h, c = model.rnn.forward.predict(input_to_rnn)
       model.hidden = h[0]
       model.cell_values = c[0]
 

@@ -52,18 +52,22 @@ class RNN():
 		rnn_x = Input(shape=(None, Z_DIM + ACTION_DIM))
 		lstm = LSTM(HIDDEN_UNITS, return_sequences=True, return_state = True)
 
-		lstm_output, _ , _ = lstm(rnn_x)
-		mdn = Dense(GAUSSIAN_MIXTURES * (3*Z_DIM) + 1)(lstm_output) #
+		lstm_output_model, _ , _ = lstm(rnn_x)
+		mdn = Dense(GAUSSIAN_MIXTURES * (3*Z_DIM) + 1) 
 
-		rnn = Model(rnn_x, mdn)
+		mdn_model = mdn(lstm_output_model)
+
+		model = Model(rnn_x, mdn_model)
 
 		#### THE MODEL USED DURING PREDICTION
 		state_input_h = Input(shape=(HIDDEN_UNITS,))
 		state_input_c = Input(shape=(HIDDEN_UNITS,))
 
-		_ , state_h, state_c = lstm(rnn_x, initial_state = [state_input_h, state_input_c])
+		lstm_output_forward , state_h, state_c = lstm(rnn_x, initial_state = [state_input_h, state_input_c])
 
-		forward = Model([rnn_x] + [state_input_h, state_input_c], [state_h, state_c])
+		mdn_forward = mdn(lstm_output_forward)
+
+		forward = Model([rnn_x] + [state_input_h, state_input_c], [mdn_forward, state_h, state_c])
 
 		#### LOSS FUNCTION
 
@@ -120,10 +124,10 @@ class RNN():
 			return z_loss + rew_loss # + done_loss  #+ rnn_kl_loss(y_true, y_pred)
 
 		opti = Adam(lr=LEARNING_RATE)
-		rnn.compile(loss=rnn_loss, optimizer=opti, metrics = [rnn_z_loss, rnn_rew_loss]) #, rnn_done_loss
-		# rnn.compile(loss=rnn_loss, optimizer='rmsprop', metrics = [rnn_z_loss, rnn_rew_loss, rnn_done_loss])
+		model.compile(loss=rnn_loss, optimizer=opti, metrics = [rnn_z_loss, rnn_rew_loss]) #, rnn_done_loss
+		# model.compile(loss=rnn_loss, optimizer='rmsprop', metrics = [rnn_z_loss, rnn_rew_loss, rnn_done_loss])
 
-		return (rnn,forward)
+		return (model,forward)
 
 	def set_weights(self, filepath):
 		self.model.load_weights(filepath)
