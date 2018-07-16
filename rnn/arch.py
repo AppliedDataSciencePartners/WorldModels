@@ -50,7 +50,7 @@ class RNN():
 
 		#### THE MODEL THAT WILL BE TRAINED
 		rnn_x = Input(shape=(None, Z_DIM + ACTION_DIM))
-		lstm = LSTM(HIDDEN_UNITS, return_sequences=True, return_state = True)
+		lstm = LSTM(HIDDEN_UNITS, return_sequences=True, return_state = True, stateful = True)
 
 		lstm_output_model, _ , _ = lstm(rnn_x)
 		mdn = Dense(GAUSSIAN_MIXTURES * (3*Z_DIM) + 1) 
@@ -138,6 +138,8 @@ class RNN():
 			shuffle=False,
 			epochs=1,
 			batch_size=BATCH_SIZE)
+
+		self.model.reset_states()
 
 
 	def save_weights(self, filepath):
