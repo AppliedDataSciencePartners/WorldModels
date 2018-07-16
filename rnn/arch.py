@@ -52,7 +52,12 @@ class RNN():
 
 		#### THE MODEL THAT WILL BE TRAINED
 		rnn_x = Input(shape=(None, Z_DIM + ACTION_DIM), batch_shape = (BATCH_SIZE, TIMESTEP_SIZE, Z_DIM + ACTION_DIM))
+		forward_x = Input(batch_shape = (1, 1, Z_DIM + ACTION_DIM))
+		
+
 		lstm = LSTM(HIDDEN_UNITS, return_sequences=True, return_state = True, stateful = True)
+
+
 
 		lstm_output_model, _ , _ = lstm(rnn_x)
 		mdn = Dense(GAUSSIAN_MIXTURES * (3*Z_DIM) + 1) 
@@ -65,14 +70,14 @@ class RNN():
 		# state_input_h = Input(shape=(HIDDEN_UNITS,))
 		# state_input_c = Input(shape=(HIDDEN_UNITS,))
 
-		# lstm_output_forward , state_h, state_c = lstm(rnn_x, initial_state = [state_input_h, state_input_c])
+		lstm_output_forward = lstm(forward_x)
 
-		# mdn_forward = mdn(lstm_output_forward)
+		mdn_forward = mdn(lstm_output_forward)
 
 		# forward = Model([rnn_x] + [state_input_h, state_input_c], [mdn_forward, state_h, state_c])
 
-		forward = model
-		
+		forward = Model(forward_x, mdn_forward)
+
 		#### LOSS FUNCTION
 
 		def rnn_z_loss(y_true, y_pred):
