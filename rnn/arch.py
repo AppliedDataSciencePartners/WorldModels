@@ -62,15 +62,17 @@ class RNN():
 		model = Model(rnn_x, mdn_model)
 
 		#### THE MODEL USED DURING PREDICTION
-		state_input_h = Input(shape=(HIDDEN_UNITS,))
-		state_input_c = Input(shape=(HIDDEN_UNITS,))
+		# state_input_h = Input(shape=(HIDDEN_UNITS,))
+		# state_input_c = Input(shape=(HIDDEN_UNITS,))
 
-		lstm_output_forward , state_h, state_c = lstm(rnn_x, initial_state = [state_input_h, state_input_c])
+		# lstm_output_forward , state_h, state_c = lstm(rnn_x, initial_state = [state_input_h, state_input_c])
 
-		mdn_forward = mdn(lstm_output_forward)
+		# mdn_forward = mdn(lstm_output_forward)
 
-		forward = Model([rnn_x] + [state_input_h, state_input_c], [mdn_forward, state_h, state_c])
+		# forward = Model([rnn_x] + [state_input_h, state_input_c], [mdn_forward, state_h, state_c])
 
+		forward = model
+		
 		#### LOSS FUNCTION
 
 		def rnn_z_loss(y_true, y_pred):
