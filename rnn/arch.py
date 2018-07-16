@@ -49,7 +49,7 @@ class RNN():
 	def _build(self):
 
 		#### THE MODEL THAT WILL BE TRAINED
-		rnn_x = Input(shape=(None, Z_DIM + ACTION_DIM), batch_shape = 100)
+		rnn_x = Input(shape=(None, Z_DIM + ACTION_DIM), batch_shape = (100, Z_DIM + ACTION_DIM))
 		lstm = LSTM(HIDDEN_UNITS, return_sequences=True, return_state = True, stateful = True)
 
 		lstm_output_model, _ , _ = lstm(rnn_x)
