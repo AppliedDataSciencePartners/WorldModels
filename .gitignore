@@ -4,6 +4,7 @@ archive/
 zoo/
 videos/
 data/
+!data/initial_z.npz
 history.txt
 # vae/weights.h5
 # rnn/weights.h5
