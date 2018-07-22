@@ -426,7 +426,7 @@ def master():
 
       prev_best_reward_eval = best_reward_eval
       model_params_quantized = np.array(es.current_param()).round(4)
-      reward_eval = evaluate_batch(model_params_quantized, max_len=300)
+      reward_eval = evaluate_batch(model_params_quantized, max_len=-1)
       model_params_quantized = model_params_quantized.tolist()
       improvement = reward_eval - best_reward_eval
       eval_log.append([t, reward_eval, model_params_quantized])
@@ -439,7 +439,7 @@ def master():
         if retrain_mode:
           sprint("reset to previous best params, where best_reward_eval =", best_reward_eval)
           es.set_mu(best_model_params_eval)
-          
+
       with open(filename_best, 'wt') as out:
         res = json.dump([best_model_params_eval, best_reward_eval], out, sort_keys=True, indent=0, separators=(',', ': '))
       
