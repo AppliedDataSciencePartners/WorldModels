@@ -3,8 +3,10 @@ __pycache__/
 archive/
 zoo/
 videos/
-data/
-!data/initial_z.npz
+data/rollout/
+data/series/
+data/run1/
+data/archive/
 history.txt
 # vae/weights.h5
 # rnn/weights.h5
