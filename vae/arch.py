@@ -21,7 +21,6 @@ CONV_T_ACTIVATIONS = ['relu','relu','relu','sigmoid']
 
 Z_DIM = 32
 
-EPOCHS = 3
 BATCH_SIZE = 100
 LEARNING_RATE = 0.0001
 KL_TOLERANCE = 0.5
@@ -48,7 +47,7 @@ class VAE():
         self.z_dim = Z_DIM
         self.learning_rate = LEARNING_RATE
         self.kl_tolerance = KL_TOLERANCE
-        self.epochs = EPOCHS
+
 
 
     def _build(self):

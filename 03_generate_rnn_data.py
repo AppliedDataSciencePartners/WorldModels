@@ -4,53 +4,56 @@ from vae.arch import VAE
 import argparse
 import config
 import numpy as np
+import os
 
-def encode_batch(vae, obs_data, action_data, rew_data, done_data):
+ROOT_DIR_NAME = "./data/"
+ROLLOUT_DIR_NAME = "./data/rollout/"
+SERIES_DIR_NAME = "./data/series/"
 
-    # rnn_input = []
-    # rnn_output = []
-    mu_out = []
-    log_var_out = []
-    action_out = []
-    reward_out = []
-    done_out = []
 
-    initial_mu = []
-    initial_log_var = []
+def get_filelist(N):
+    filelist = os.listdir(ROLLOUT_DIR_NAME)
+    filelist = [x for x in filelist if x != '.DS_Store']
+    filelist.sort()
+    length_filelist = len(filelist)
 
-    for obs, act, rew, done in zip(obs_data, action_data, rew_data, done_data):   
 
-        rew = np.where(rew>0, 1, 0)
-        done = done.astype(int)  
+    if length_filelist > N:
+      filelist = filelist[:N]
 
-        mu, log_var = vae.encoder_mu_log_var.predict(np.array(obs))
-        
-        initial_mu.append(mu[0, :])
-        initial_log_var.append(log_var[0, :])
+    if length_filelist < N:
+      N = length_filelist
 
-        mu_out.append(mu)
-        log_var_out.append(log_var)
-        action_out.append(act)
-        reward_out.append(rew)
-        done_out.append(done)
+    return filelist, N
 
-    initial_mu = np.array(initial_mu)
-    initial_log_var = np.array(initial_log_var)
+def encode_episode(vae, episode):
 
-    mu_out = np.array(mu_out)
-    log_var_out = np.array(log_var_out)
-    action_out = np.array(action_out)
-    reward_out = np.array(reward_out)
-    done_out = np.array(done_out)
+    obs = episode['obs']
+    action = episode['action']
+    reward = episode['reward']
+    done = episode['done']
 
-    return (mu_out, log_var_out, action_out, reward_out, done_out, initial_mu, initial_log_var)
+
+    
+    done = done.astype(int)  
+    # print(reward)
+    # print(done)
+    reward = np.where(reward>0, 1, 0) * np.where(done==0, 1, 0)
+    # print(reward)
+
+    mu, log_var = vae.encoder_mu_log_var.predict(obs)
+    
+    initial_mu = mu[0, :]
+    initial_log_var = log_var[0, :]
+
+  
+    return (mu, log_var, action, reward, done, initial_mu, initial_log_var)
 
 
 
 def main(args):
 
-    start_batch = args.start_batch
-    max_batch = args.max_batch
+    N = args.N
 
     vae = VAE()
 
@@ -60,52 +63,43 @@ def main(args):
       print("./vae/weights.h5 does not exist - ensure you have run 02_train_vae.py first")
       raise
 
-    for batch_num in range(start_batch, max_batch + 1):
-      first_item = True
-      print('Generating batch {}...'.format(batch_num))
 
-      for env_name in config.train_envs:
-        try:
-          new_obs_data = np.load('./data/obs_data_' + env_name + '_'  + str(batch_num) + '.npy') 
-          new_action_data= np.load('./data/action_data_' + env_name + '_'  + str(batch_num) + '.npy')
-          new_reward_data = np.load('./data/reward_data_' + env_name + '_'  + str(batch_num) + '.npy') 
-          new_done_data = np.load('./data/done_data_' + env_name + '_'  + str(batch_num) + '.npy')
+    filelist, N = get_filelist(N)
 
-          if first_item:
-            obs_data = new_obs_data
-            action_data = new_action_data
-            rew_data = new_reward_data
-            done_data = new_done_data
-            first_item = False
-          else:
-            obs_data = np.concatenate([obs_data, new_obs_data])
-            action_data = np.concatenate([action_data, new_action_data])
-            rew_data = np.concatenate([reward_data, new_reward_data])
-            done_data = np.concatenate([done_data, new_done_data])
+    file_count = 0
 
-          print('Found {}...current data size = {} episodes'.format(env_name, len(obs_data)))
-        except:
-          pass
-      
-      if first_item == False:
-        mu, log_var, action, reward, done, initial_mu, initial_log_var = encode_batch(vae, obs_data, action_data, rew_data, done_data)
-        
-        np.save('./data/mu_' + str(batch_num), mu)
-        np.save('./data/log_var_' + str(batch_num), log_var)
-        np.save('./data/action_' + str(batch_num), action)
-        np.save('./data/reward_' + str(batch_num), reward)
-        np.save('./data/done_' + str(batch_num), done)
+    initial_mus = []
+    initial_log_vars = []
 
-        np.save('./data/initial_mu_' + str(batch_num), initial_mu)
-        np.save('./data/initial_log_var_' + str(batch_num), initial_log_var)
-      else:
-        print('no data found for batch number {}'.format(batch_num))
+    for file in filelist:
 
+      new_data = np.load(ROLLOUT_DIR_NAME + file)
+
+      mu, log_var, action, reward, done, initial_mu, initial_log_var = encode_episode(vae, new_data)
+
+      np.savez_compressed(SERIES_DIR_NAME + file, mu=mu, log_var=log_var, action = action, reward = reward, done = done)
+      initial_mus.append(initial_mu)
+      initial_log_vars.append(initial_log_var)
+
+      file_count += 1
+
+      if file_count%50==0:
+        print('Encoded {} / {} episodes'.format(file_count, N))
+
+    print('Encoded {} / {} episodes'.format(file_count, N))
+
+    initial_mus = np.array(initial_mus)
+    initial_log_vars = np.array(initial_log_vars)
+
+    print('ONE MU SHAPE = {}'.format(mu.shape))
+    print('INITIAL MU SHAPE = {}'.format(initial_mus.shape))
+
+    np.savez_compressed(ROOT_DIR_NAME + 'initial_z.npz', initial_mu=initial_mus, initial_log_var=initial_log_vars)
+
+    
 if __name__ == "__main__":
   parser = argparse.ArgumentParser(description=('Generate RNN data'))
-  parser.add_argument('--start_batch', type=int, default = 0, help='The start batch number')
-  parser.add_argument('--max_batch', type=int, default = 0, help='The max batch number')
-
+  parser.add_argument('--N',default = 10000, help='number of episodes to use to train')
   args = parser.parse_args()
 
   main(args)

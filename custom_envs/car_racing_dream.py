@@ -24,12 +24,13 @@ SCREEN_X = 64
 SCREEN_Y = 64
 FACTOR = 8
 
+HIDDEN_UNITS = 256
 GAUSSIAN_MIXTURES = 5
 Z_DIM = 32
 
-
-initial_mu = np.load('./data/initial_mu_' + str(0) + '.npy')
-initial_log_var = np.load('./data/initial_log_var_' + str(0) + '.npy')
+initial_z = np.load('./data/initial_z.npz')
+initial_mu = initial_z['initial_mu']
+initial_log_var = initial_z['initial_log_var']
 
 initial_mu_log_var = [list(elem) for elem in zip(initial_mu, initial_log_var)]
 
@@ -54,8 +55,8 @@ class CarRacingDream(gym.Env):
     }
 
     def __init__(self, model):
-        self.observation_space = Box(low=-50., high=50., shape=(model.rnn.z_dim,)) # , dtype=np.float32
-        self.action_space = spaces.Box( np.array([-1,0,0]), np.array([+1,+1,+1]))  # steer, gas, brake
+        self.observation_space = Box(low=-50., high=50., shape=(model.rnn.z_dim,) , dtype = np.float32) # , dtype=np.float32
+        self.action_space = spaces.Box( np.array([-1,0,0]), np.array([+1,+1,+1]) , dtype = np.float32)  # steer, gas, brake
         
         self.seed()
 
@@ -65,6 +66,9 @@ class CarRacingDream(gym.Env):
         self.t = None
 
         self.z = None
+        self.h = None
+        self.c = None
+        self.previous_reward = None
         self.reset()
 
     def seed(self, seed=None):
@@ -73,7 +77,7 @@ class CarRacingDream(gym.Env):
 
 
     def sample_z(self, mu, log_sigma):
-        z =  mu + (np.exp(log_sigma)) * self.np_random.randn(*log_sigma.shape) * 0.75
+        z =  mu + (np.exp(log_sigma)) * self.np_random.randn(*log_sigma.shape)  *0.5
         return z
 
 
@@ -84,6 +88,10 @@ class CarRacingDream(gym.Env):
         init_sigma = np.exp(init_log_var / 2)
 
         self.z = self.sample_z(init_mu, init_sigma)
+        self.h = np.zeros(HIDDEN_UNITS)
+        self.c = np.zeros(HIDDEN_UNITS)
+        self.previous_reward = 0
+
         self.t = 0
         return self.z
 
@@ -102,15 +110,23 @@ class CarRacingDream(gym.Env):
 
     def sample_next_mdn_output(self, action):  
 
+
         d = GAUSSIAN_MIXTURES * Z_DIM
 
         z_dim = self.model.rnn.z_dim
 
-        input_to_rnn = [np.array([[np.concatenate([self.z, action])]])]
-        
-        y_pred = self.model.rnn.model.predict(input_to_rnn)[0][0]
+        input_to_rnn = [np.array([[np.concatenate([self.z, action, [self.previous_reward]])]]),np.array([self.h]),np.array([self.c])]
+
+        out = self.model.rnn.forward.predict(input_to_rnn)
+
+        y_pred = out[0][0][0]
+        new_h = out[1][0]
+        new_c = out[2][0]
+
         z_pred = y_pred[:(3*d)]
-        rew_pred = y_pred[3*d]
+        rew_pred = y_pred[-1]
+
+
         
         z_pred = np.reshape(z_pred, [-1, GAUSSIAN_MIXTURES * 3])
 
@@ -133,16 +149,26 @@ class CarRacingDream(gym.Env):
           chosen_log_sigma[j] = sigma[j,idx]
 
         next_z = self.sample_z(chosen_mu, chosen_log_sigma)
+
+        # print(next_z)
         # print(rew_pred)
         if rew_pred > 0:
-            next_reward = 3.2
+            next_reward = 1
         else:
-            next_reward = -0.1
+            next_reward = 0
+
+
 
         # if done > 0:
         #     next_done = True
         # else:
         #     next_done = False
+
+        self.h = new_h
+        self.c = new_c
+        self.previous_reward = next_reward
+
+
 
         return next_z, next_reward #, next_done
 
@@ -201,7 +227,7 @@ if __name__=="__main__":
         if k==key.RIGHT and a[0]==+1.0: a[0] = 0
         if k==key.UP:    a[1] = 0
         if k==key.DOWN:  a[2] = 0
-    env = CarRacing()
+    env = CarRacingDream()
     env.render()
     record_video = False
     if record_video:

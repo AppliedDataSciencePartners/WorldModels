@@ -17,10 +17,7 @@ ACTION_DIM = 3
 HIDDEN_UNITS = 256
 GAUSSIAN_MIXTURES = 5
 
-BATCH_SIZE =100
-EPOCHS = 4000
-
-REWARD_FACTOR = 0.5
+REWARD_FACTOR = 0
 #RESTART_FACTOR = 0
 
 LEARNING_RATE = 0.001
@@ -37,8 +34,6 @@ class RNN():
 		self.gaussian_mixtures = GAUSSIAN_MIXTURES
 		#self.restart_factor = RESTART_FACTOR
 		self.reward_factor = REWARD_FACTOR
-		self.batch_size = BATCH_SIZE
-		self.epochs = EPOCHS
 		self.learning_rate = LEARNING_RATE
 
 		self.models = self._build()
@@ -49,7 +44,7 @@ class RNN():
 	def _build(self):
 
 		#### THE MODEL THAT WILL BE TRAINED
-		rnn_x = Input(shape=(None, Z_DIM + ACTION_DIM))
+		rnn_x = Input(shape=(None, Z_DIM + ACTION_DIM + 1))
 		lstm = LSTM(HIDDEN_UNITS, return_sequences=True, return_state = True)
 
 		lstm_output_model, _ , _ = lstm(rnn_x)
@@ -76,7 +71,7 @@ class RNN():
 			z_true, rew_true = self.get_responses(y_true) #, done_true 
 
 			d = GAUSSIAN_MIXTURES * Z_DIM
-			z_pred = y_pred[:,:,:(3*d)]
+			z_pred = y_pred[:,:,:3*d]
 			z_pred = K.reshape(z_pred, [-1, GAUSSIAN_MIXTURES * 3])
 
 			log_pi, mu, log_sigma = self.get_mixture_coef(z_pred)
@@ -95,13 +90,13 @@ class RNN():
 			z_true, rew_true = self.get_responses(y_true) #, done_true
 
 			d = GAUSSIAN_MIXTURES * Z_DIM
-			reward_pred = y_pred[:,:,(3*d):(3*d+1)]
+			reward_pred = y_pred[:,:,-1]
 
 			rew_loss =  K.binary_crossentropy(rew_true, reward_pred)
 			
 			rew_loss = K.mean(rew_loss)
 
-			return REWARD_FACTOR * rew_loss
+			return rew_loss
 
 		# def rnn_done_loss(y_true, y_pred):
 		# 	z_true, rew_true = self.get_responses(y_true) #, done_true
@@ -121,7 +116,7 @@ class RNN():
 			rew_loss = rnn_rew_loss(y_true, y_pred)
 			#done_loss = rnn_done_loss(y_true, y_pred)
 
-			return z_loss + rew_loss # + done_loss  #+ rnn_kl_loss(y_true, y_pred)
+			return z_loss + REWARD_FACTOR * rew_loss # + done_loss  #+ rnn_kl_loss(y_true, y_pred)
 
 		opti = Adam(lr=LEARNING_RATE)
 		model.compile(loss=rnn_loss, optimizer=opti, metrics = [rnn_z_loss, rnn_rew_loss]) #, rnn_done_loss
@@ -137,7 +132,7 @@ class RNN():
 		self.model.fit(rnn_input, rnn_output,
 			shuffle=False,
 			epochs=1,
-			batch_size=BATCH_SIZE)
+			batch_size=len(rnn_input))
 
 
 	def save_weights(self, filepath):
@@ -146,7 +141,7 @@ class RNN():
 	def get_responses(self, y_true):
 
 		z_true = y_true[:,:,:Z_DIM]
-		rew_true = y_true[:,:,Z_DIM: (Z_DIM + 1) ]
+		rew_true = y_true[:,:,-1]
 		# done_true = y_true[:,:,(Z_DIM + 1):]
 
 		return z_true, rew_true #, done_true

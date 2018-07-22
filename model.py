@@ -159,15 +159,13 @@ class Model:
     else:
       return obs
 
-def evaluate(model):
-  # run 100 times and average score, according to the reles.
-  model.env.seed(0)
-  total_reward = 0.0
-  N = 100
-  for i in range(N):
-    reward, t = simulate(model, num_episode=1)
-    total_reward += reward[0]
-  return (total_reward / float(N))
+def evaluate(model, num_episode, max_len):
+
+  reward, t = simulate(model, num_episode=num_episode, max_len=max_len)
+
+  total_reward = np.mean(reward)
+
+  return reward, total_reward
 
 def compress_input_dct(obs):
   new_obs = np.zeros((8, 8))
@@ -198,11 +196,10 @@ def simulate(model, num_episode=5, seed=-1, max_len=-1, generate_data_mode = Fal
     model.reset()
 
     obs = model.env.reset()
-    obs = config.adjust_obs(obs)
+    if obs.shape == model.vae.input_dim:
+      obs = config.adjust_obs(obs)
+
     action = model.env.action_space.sample()
-
-    model.env.render("human")
-
 
     if obs is None:
       obs = np.zeros(model.input_size)
@@ -214,9 +211,12 @@ def simulate(model, num_episode=5, seed=-1, max_len=-1, generate_data_mode = Fal
       if render_mode:
         model.env.render("human")
         if RENDER_DELAY:
-          time.sleep(0.01)
+          time.sleep(0.1)
+      else:
+        model.env.render('rgb_array')
 
       vae_encoded_obs = model.update(obs, t)
+
       controller_obs = np.concatenate([vae_encoded_obs,model.hidden])
 
       if generate_data_mode:
@@ -225,15 +225,18 @@ def simulate(model, num_episode=5, seed=-1, max_len=-1, generate_data_mode = Fal
         action = model.get_action(controller_obs, t=t, add_noise=ADD_NOISE)
 
 
-      obs, reward, done, info = model.env.step(action)
-      
-      obs = config.adjust_obs(obs)
+      # action = [-0.1,1,0]
 
-      input_to_rnn = [np.array([[np.concatenate([vae_encoded_obs, action])]]),np.array([model.hidden]),np.array([model.cell_values])]
+      obs, reward, done, info = model.env.step(action)
+
+      if obs.shape == model.vae.input_dim:
+        obs = config.adjust_obs(obs)
+
+      input_to_rnn = [np.array([[np.concatenate([vae_encoded_obs, action, [reward]])]]),np.array([model.hidden]),np.array([model.cell_values])]
       zs, h, c = model.rnn.forward.predict(input_to_rnn)
       model.hidden = h[0]
       model.cell_values = c[0]
-
+      # print(total_reward)
       total_reward += reward
 
       if done:

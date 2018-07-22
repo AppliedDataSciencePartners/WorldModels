@@ -1,4 +1,5 @@
 #python 05_train_controller.py car_racing -e 1 -n 4 -t 1 --max_length 1000
+#python 05_train_controller.py car_racing -e 4 -n 8 -t 2 --max_length 1000
 #xvfb-run -a -s "-screen 0 1400x900x24" python 05_train_controller.py car_racing -n 16 -t 2 -e 4 --max_length 1000
 
 from mpi4py import MPI
@@ -214,6 +215,7 @@ def worker(weights, seed, max_len, new_model):
 def slave():
 
   new_model = make_model()
+  dream_model = make_model()
   
   while 1:
     #print('waiting for packet')
@@ -231,7 +233,6 @@ def slave():
     results = []
     
     if dream_mode:
-      dream_model = make_model()
       new_model.make_env(current_env_name + '_dream', model = dream_model)
     else:
       new_model.make_env(current_env_name)
@@ -250,13 +251,13 @@ def slave():
      
       results.append([worker_id, jobidx, fitness, timesteps])
 
+    
     new_model.env.close()
 
     result_packet = encode_result_packet(results)
     assert len(result_packet) == RESULT_PACKET_SIZE
     comm.Send(result_packet, dest=0)
-    #print('slave: completed solutions')
-    
+
 
 def send_packets_to_slaves(packet_list, current_env_name, dream_mode):
   num_worker = comm.Get_size()
@@ -307,7 +308,8 @@ def evaluate_batch(model_params, max_len):
     packets_from_slaves = receive_packets_from_slaves()
     reward_list = packets_from_slaves[:, 0] # get rewards
     overall_rewards.append(np.mean(reward_list))
-    #print(len(overall_rewards))
+    print(reward_list)
+    print(overall_rewards)
 
   return np.mean(overall_rewards)
 
@@ -364,22 +366,20 @@ def master():
     e_num = 1
     
     for current_env_name in config.train_envs:
-      #print('before send packets')
-      #tracker1 = SummaryTracker()
+      # print('before send packets')
+      # tracker1 = SummaryTracker()
       send_packets_to_slaves(packet_list, current_env_name, dream_mode)
-      #print('between send and receive')
-      #tracker1.print_diff()
+      # print('between send and receive')
+      # tracker1.print_diff()
       packets_from_slaves = receive_packets_from_slaves()
-      #print('after receive')
-      #tracker1.print_diff()
+      # print('after receive')
+      # tracker1.print_diff()
       reward_list = reward_list  + packets_from_slaves[:, 0]
       time_list = time_list  + packets_from_slaves[:, 1]
       if len(config.train_envs) > 1:
         print('completed environment {} of {}'.format(e_num, len(config.train_envs)))
       e_num += 1
       
-
-    
     reward_list = reward_list / len(config.train_envs)
     time_list = time_list / len(config.train_envs)
 
@@ -421,12 +421,12 @@ def master():
     
 
     if (t == 1):
-      best_reward_eval = avg_reward
+      best_reward_eval = -999
     if (t % eval_steps == 0): # evaluate on actual task at hand
 
       prev_best_reward_eval = best_reward_eval
       model_params_quantized = np.array(es.current_param()).round(4)
-      reward_eval = evaluate_batch(model_params_quantized, max_len=-1)
+      reward_eval = evaluate_batch(model_params_quantized, max_len=300)
       model_params_quantized = model_params_quantized.tolist()
       improvement = reward_eval - best_reward_eval
       eval_log.append([t, reward_eval, model_params_quantized])
@@ -439,10 +439,11 @@ def master():
         if retrain_mode:
           sprint("reset to previous best params, where best_reward_eval =", best_reward_eval)
           es.set_mu(best_model_params_eval)
+          
       with open(filename_best, 'wt') as out:
         res = json.dump([best_model_params_eval, best_reward_eval], out, sort_keys=True, indent=0, separators=(',', ': '))
       
-      
+    
 
       sprint("improvement", t, improvement, "curr", reward_eval, "prev", prev_best_reward_eval, "best", best_reward_eval)
 
