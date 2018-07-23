@@ -212,8 +212,8 @@ def simulate(model, num_episode=5, seed=-1, max_len=-1, generate_data_mode = Fal
         model.env.render("human")
         if RENDER_DELAY:
           time.sleep(0.1)
-      else:
-        model.env.render('rgb_array')
+      # else:
+      #   model.env.render('rgb_array')
 
       vae_encoded_obs = model.update(obs, t)
 
