@@ -77,7 +77,7 @@ class CarRacingDream(gym.Env):
 
 
     def sample_z(self, mu, log_sigma):
-        z =  mu + (np.exp(log_sigma)) * self.np_random.randn(*log_sigma.shape)  *0.5
+        z =  mu + (np.exp(log_sigma)) * self.np_random.randn(*log_sigma.shape)  *0
         return z
 
 
