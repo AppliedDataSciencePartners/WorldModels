@@ -421,7 +421,7 @@ def master():
     
 
     if (t == 1):
-      best_reward_eval = -999
+      best_reward_eval = avg_reward
     if (t % eval_steps == 0): # evaluate on actual task at hand
 
       prev_best_reward_eval = best_reward_eval
@@ -443,8 +443,6 @@ def master():
       with open(filename_best, 'wt') as out:
         res = json.dump([best_model_params_eval, best_reward_eval], out, sort_keys=True, indent=0, separators=(',', ': '))
       
-    
-
       sprint("improvement", t, improvement, "curr", reward_eval, "prev", prev_best_reward_eval, "best", best_reward_eval)
 
 

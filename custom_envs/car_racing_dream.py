@@ -85,9 +85,9 @@ class CarRacingDream(gym.Env):
         idx = self.np_random.randint(0, len(initial_mu_log_var))
         init_mu, init_log_var = initial_mu_log_var[idx]
 
-        init_sigma = np.exp(init_log_var / 2)
+        init_log_sigma = init_log_var / 2
 
-        self.z = self.sample_z(init_mu, init_sigma)
+        self.z = self.sample_z(init_mu, init_log_sigma)
         self.h = np.zeros(HIDDEN_UNITS)
         self.c = np.zeros(HIDDEN_UNITS)
         self.previous_reward = 0
@@ -130,7 +130,7 @@ class CarRacingDream(gym.Env):
         
         z_pred = np.reshape(z_pred, [-1, GAUSSIAN_MIXTURES * 3])
 
-        log_pi, mu, sigma = self.get_mixture_coef(z_pred)
+        log_pi, mu, log_sigma = self.get_mixture_coef(z_pred)
 
         chosen_log_pi = np.zeros(z_dim)
         chosen_mu = np.zeros(z_dim)
@@ -146,7 +146,7 @@ class CarRacingDream(gym.Env):
           idx = get_pi_idx(self.np_random.rand(), logmix2[j])
           chosen_log_pi[j] = idx
           chosen_mu[j] = mu[j, idx]
-          chosen_log_sigma[j] = sigma[j,idx]
+          chosen_log_sigma[j] = log_sigma[j,idx]
 
         next_z = self.sample_z(chosen_mu, chosen_log_sigma)
 
