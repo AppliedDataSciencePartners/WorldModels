@@ -7,11 +7,11 @@ import numpy as np
 import os
 
 ROOT_DIR_NAME = './data/'
-ROLLOUT_DIR_NAME = './data/series/'
+SERIES_DIR_NAME = './data/series/'
 
 
 def get_filelist(N):
-    filelist = os.listdir(ROLLOUT_DIR_NAME)
+    filelist = os.listdir(SERIES_DIR_NAME)
     filelist = [x for x in filelist if x != '.DS_Store']
     filelist.sort()
     length_filelist = len(filelist)
@@ -36,7 +36,7 @@ def random_batch(filelist, batch_size):
 	done_list = []
 
 	for i in indices:
-		new_data = np.load(ROLLOUT_DIR_NAME + filelist[i])
+		new_data = np.load(SERIES_DIR_NAME + filelist[i])
 
 		mu = new_data['mu']
 		log_var = new_data['log_var']

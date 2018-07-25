@@ -17,7 +17,8 @@ ACTION_DIM = 3
 HIDDEN_UNITS = 256
 GAUSSIAN_MIXTURES = 5
 
-REWARD_FACTOR = 0
+Z_FACTOR = 1
+REWARD_FACTOR = 1
 #RESTART_FACTOR = 0
 
 LEARNING_RATE = 0.001
@@ -71,7 +72,7 @@ class RNN():
 			z_true, rew_true = self.get_responses(y_true) #, done_true 
 
 			d = GAUSSIAN_MIXTURES * Z_DIM
-			z_pred = y_pred[:,:,:3*d]
+			z_pred = y_pred[:,:,:(3*d)]
 			z_pred = K.reshape(z_pred, [-1, GAUSSIAN_MIXTURES * 3])
 
 			log_pi, mu, log_sigma = self.get_mixture_coef(z_pred)
@@ -92,7 +93,7 @@ class RNN():
 			d = GAUSSIAN_MIXTURES * Z_DIM
 			reward_pred = y_pred[:,:,-1]
 
-			rew_loss =  K.binary_crossentropy(rew_true, reward_pred)
+			rew_loss =  K.binary_crossentropy(rew_true, reward_pred, from_logits = True)
 			
 			rew_loss = K.mean(rew_loss)
 
@@ -116,7 +117,7 @@ class RNN():
 			rew_loss = rnn_rew_loss(y_true, y_pred)
 			#done_loss = rnn_done_loss(y_true, y_pred)
 
-			return z_loss + REWARD_FACTOR * rew_loss # + done_loss  #+ rnn_kl_loss(y_true, y_pred)
+			return Z_FACTOR * z_loss + REWARD_FACTOR * rew_loss # + done_loss  #+ rnn_kl_loss(y_true, y_pred)
 
 		opti = Adam(lr=LEARNING_RATE)
 		model.compile(loss=rnn_loss, optimizer=opti, metrics = [rnn_z_loss, rnn_rew_loss]) #, rnn_done_loss
@@ -132,7 +133,7 @@ class RNN():
 		self.model.fit(rnn_input, rnn_output,
 			shuffle=False,
 			epochs=1,
-			batch_size=len(rnn_input))
+			batch_size=len(rnn_input)) 
 
 
 	def save_weights(self, filepath):

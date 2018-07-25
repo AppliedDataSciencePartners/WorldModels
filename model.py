@@ -206,6 +206,8 @@ def simulate(model, num_episode=5, seed=-1, max_len=-1, generate_data_mode = Fal
 
     total_reward = 0.0
 
+    model.env.render("rgb_array")
+
     for t in range(max_episode_length):
 
       if render_mode:
@@ -225,6 +227,7 @@ def simulate(model, num_episode=5, seed=-1, max_len=-1, generate_data_mode = Fal
         action = model.get_action(controller_obs, t=t, add_noise=ADD_NOISE)
 
 
+      # print(action)
       # action = [-0.1,1,0]
 
       obs, reward, done, info = model.env.step(action)

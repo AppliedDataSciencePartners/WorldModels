@@ -77,7 +77,7 @@ class CarRacingDream(gym.Env):
 
 
     def sample_z(self, mu, log_sigma):
-        z =  mu + (np.exp(log_sigma)) * self.np_random.randn(*log_sigma.shape)  *0
+        z =  mu + (np.exp(log_sigma)) * self.np_random.randn(*log_sigma.shape) 
         return z
 
 
@@ -125,8 +125,6 @@ class CarRacingDream(gym.Env):
 
         z_pred = y_pred[:(3*d)]
         rew_pred = y_pred[-1]
-
-
         
         z_pred = np.reshape(z_pred, [-1, GAUSSIAN_MIXTURES * 3])
 
