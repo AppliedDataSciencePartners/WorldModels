@@ -180,7 +180,7 @@ def simulate(model, num_episode=5, seed=-1, max_len=-1, generate_data_mode = Fal
   reward_list = []
   t_list = []
 
-  max_episode_length = 1000
+  max_episode_length = 3000
 
   if max_len > 0:
     if max_len < max_episode_length:
@@ -244,9 +244,6 @@ def simulate(model, num_episode=5, seed=-1, max_len=-1, generate_data_mode = Fal
 
       if done:
         break
-
-
-    print("reward", total_reward, "timesteps", t)
 
     if render_mode:
       print("reward", total_reward, "timesteps", t)
