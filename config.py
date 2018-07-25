@@ -38,3 +38,11 @@ def adjust_obs(obs):
     
     return obs.astype('float32') / 255.
     
+
+def adjust_reward(reward):
+    if reward > 0:
+        reward = 1
+    else:
+        reward = 0
+    return reward
+    

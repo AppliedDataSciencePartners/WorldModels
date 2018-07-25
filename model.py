@@ -196,19 +196,23 @@ def simulate(model, num_episode=5, seed=-1, max_len=-1, generate_data_mode = Fal
     model.reset()
 
     obs = model.env.reset()
-    if obs.shape == model.vae.input_dim:
-      obs = config.adjust_obs(obs)
+    reward = 0
+    action = np.array([0,0,0])
 
-    action = model.env.action_space.sample()
 
     if obs is None:
       obs = np.zeros(model.input_size)
 
     total_reward = 0.0
+    
 
     model.env.render("rgb_array")
 
     for t in range(max_episode_length):
+
+      if obs.shape == model.vae.input_dim:
+        obs = config.adjust_obs(obs)
+        reward = config.adjust_reward(reward)
 
       if render_mode:
         model.env.render("human")
@@ -219,10 +223,16 @@ def simulate(model, num_episode=5, seed=-1, max_len=-1, generate_data_mode = Fal
 
       vae_encoded_obs = model.update(obs, t)
 
+    
+      input_to_rnn = [np.array([[np.concatenate([vae_encoded_obs, action, [reward]])]]),np.array([model.hidden]),np.array([model.cell_values])]
+      zs, h, c = model.rnn.forward.predict(input_to_rnn)
+      model.hidden = h[0]
+      model.cell_values = c[0]
+      
       controller_obs = np.concatenate([vae_encoded_obs,model.hidden])
 
       if generate_data_mode:
-        action = config.generate_data_action(t=t, current_action = action)
+        action = config.generate_data_action(t=t, env = model.env)
       else:
         action = model.get_action(controller_obs, t=t, add_noise=ADD_NOISE)
 
@@ -232,14 +242,6 @@ def simulate(model, num_episode=5, seed=-1, max_len=-1, generate_data_mode = Fal
 
       obs, reward, done, info = model.env.step(action)
 
-      if obs.shape == model.vae.input_dim:
-        obs = config.adjust_obs(obs)
-
-      input_to_rnn = [np.array([[np.concatenate([vae_encoded_obs, action, [reward]])]]),np.array([model.hidden]),np.array([model.cell_values])]
-      zs, h, c = model.rnn.forward.predict(input_to_rnn)
-      model.hidden = h[0]
-      model.cell_values = c[0]
-      # print(total_reward)
       total_reward += reward
 
       if done:
