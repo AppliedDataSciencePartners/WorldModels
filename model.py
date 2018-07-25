@@ -245,6 +245,9 @@ def simulate(model, num_episode=5, seed=-1, max_len=-1, generate_data_mode = Fal
       if done:
         break
 
+
+    print("reward", total_reward, "timesteps", t)
+
     if render_mode:
       print("reward", total_reward, "timesteps", t)
     
