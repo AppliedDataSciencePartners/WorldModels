@@ -415,8 +415,8 @@ def master():
     pickle.dump(es, open(filename_es, 'wb'))
 
     sprint(env_name, h)
-    sprint(np.array(es.current_param()).round(4))
-    sprint(np.array(es.current_param()).round(4).sum())
+    # sprint(np.array(es.current_param()).round(4))
+    # sprint(np.array(es.current_param()).round(4).sum())
 
     
 
