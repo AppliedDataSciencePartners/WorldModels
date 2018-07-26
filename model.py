@@ -210,9 +210,12 @@ def simulate(model, num_episode=5, seed=-1, max_len=-1, generate_data_mode = Fal
 
     for t in range(max_episode_length):
 
-      if obs.shape == model.vae.input_dim:
+      if obs.shape == model.vae.input_dim: ### running in real environment
         obs = config.adjust_obs(obs)
+      else: ### running in dream environment
         reward = config.adjust_reward(reward)
+
+      print(reward)
 
       if render_mode:
         model.env.render("human")
@@ -225,10 +228,13 @@ def simulate(model, num_episode=5, seed=-1, max_len=-1, generate_data_mode = Fal
 
     
       input_to_rnn = [np.array([[np.concatenate([vae_encoded_obs, action, [reward]])]]),np.array([model.hidden]),np.array([model.cell_values])]
-      zs, h, c = model.rnn.forward.predict(input_to_rnn)
-      model.hidden = h[0]
-      model.cell_values = c[0]
-      
+
+      out = model.rnn.forward.predict(input_to_rnn)
+
+      y_pred = out[0][0][0]
+      model.hidden = out[1][0]
+      model.cell_values = out[2][0]
+
       controller_obs = np.concatenate([vae_encoded_obs,model.hidden])
 
       if generate_data_mode:
@@ -305,7 +311,7 @@ def main(args):
   else:
     if record_video:
       model.env = Monitor(model.env, directory='./videos',video_callable=lambda episode_id: True, write_upon_reset=True, force=True)
-    while(5):
+    while(1):
       reward, steps_taken = simulate(model, render_mode=render_mode, num_episode=1, max_len = max_length, generate_data_mode = generate_data_mode)
       print ("terminal reward", reward, "average steps taken", np.mean(steps_taken)+1)
       #break

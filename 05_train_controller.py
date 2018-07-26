@@ -14,8 +14,6 @@ import random
 
 from pympler.tracker import SummaryTracker
 
-from model import make_model
-
 from model import make_model, simulate
 from es import CMAES, SimpleGA, OpenES, PEPG
 import argparse
@@ -515,7 +513,7 @@ if __name__ == "__main__":
   parser.add_argument('--cap_time', type=int, default=0, help='set to 0 to disable capping timesteps to 2x of average.')
   parser.add_argument('--retrain', type=int, default=0, help='set to 0 to disable retraining every eval_steps if results suck.\n only works w/ ses, openes, pepg.')
   parser.add_argument('-s', '--seed_start', type=int, default=111, help='initial seed')
-  parser.add_argument('--sigma_init', type=float, default=0.50, help='sigma_init')
+  parser.add_argument('--sigma_init', type=float, default=0.1, help='sigma_init')
   parser.add_argument('--sigma_decay', type=float, default=0.999, help='sigma_decay')
 
   parser.add_argument('--dream_mode', type=int, help='train the agent in its dreams?', default=0)

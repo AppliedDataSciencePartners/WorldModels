@@ -73,9 +73,9 @@ def main(args):
 
     for file in filelist:
 
-      new_data = np.load(ROLLOUT_DIR_NAME + file)
+      rollout_data = np.load(ROLLOUT_DIR_NAME + file)
 
-      mu, log_var, action, reward, done, initial_mu, initial_log_var = encode_episode(vae, new_data)
+      mu, log_var, action, reward, done, initial_mu, initial_log_var = encode_episode(vae, rollout_data)
 
       np.savez_compressed(SERIES_DIR_NAME + file, mu=mu, log_var=log_var, action = action, reward = reward, done = done)
       initial_mus.append(initial_mu)
