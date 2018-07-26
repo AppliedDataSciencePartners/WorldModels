@@ -215,7 +215,7 @@ def simulate(model, num_episode=5, seed=-1, max_len=-1, generate_data_mode = Fal
       else: ### running in dream environment
         reward = config.adjust_reward(reward)
 
-      print(reward)
+      # print(reward)
 
       if render_mode:
         model.env.render("human")
