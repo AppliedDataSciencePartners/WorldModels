@@ -33,20 +33,14 @@ def encode_episode(vae, episode):
     reward = episode['reward']
     done = episode['done']
 
-
-    
     done = done.astype(int)  
-    # print(reward)
-    # print(done)
     reward = np.where(reward>0, 1, 0) * np.where(done==0, 1, 0)
-    # print(reward)
 
     mu, log_var = vae.encoder_mu_log_var.predict(obs)
     
     initial_mu = mu[0, :]
     initial_log_var = log_var[0, :]
 
-  
     return (mu, log_var, action, reward, done, initial_mu, initial_log_var)
 
 

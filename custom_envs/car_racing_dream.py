@@ -135,13 +135,13 @@ class CarRacingDream(gym.Env):
         chosen_log_sigma = np.zeros(z_dim)
 
         # adjust temperatures
-        logmix2 = np.copy(log_pi)
-        logmix2 -= logmix2.max()
-        logmix2 = np.exp(logmix2)
-        logmix2 /= logmix2.sum(axis=1).reshape(z_dim, 1)
+        pi = np.copy(log_pi)
+        # pi -= pi.max()
+        pi = np.exp(pi)
+        pi /= pi.sum(axis=1).reshape(z_dim, 1)
 
         for j in range(z_dim):
-          idx = get_pi_idx(self.np_random.rand(), logmix2[j])
+          idx = get_pi_idx(self.np_random.rand(), pi[j])
           chosen_log_pi[j] = idx
           chosen_mu[j] = mu[j, idx]
           chosen_log_sigma[j] = log_sigma[j,idx]

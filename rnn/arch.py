@@ -65,11 +65,13 @@ class RNN():
 
 		forward = Model([rnn_x] + [state_input_h, state_input_c], [mdn_forward, state_h, state_c])
 
+		full_model = 
+
 		#### LOSS FUNCTION
 
 		def rnn_z_loss(y_true, y_pred):
 			
-			z_true, rew_true = self.get_responses(y_true) #, done_true 
+			z_true, rew_true = self.get_responses(y_true) 
 
 			d = GAUSSIAN_MIXTURES * Z_DIM
 			z_pred = y_pred[:,:,:(3*d)]
@@ -77,12 +79,12 @@ class RNN():
 
 			log_pi, mu, log_sigma = self.get_mixture_coef(z_pred)
 
-			flat_target_data = K.reshape(z_true,[-1, 1])
+			flat_z_true = K.reshape(z_true,[-1, 1])
 
-			z_loss = log_pi + self.tf_lognormal(flat_target_data, mu, log_sigma)
+			z_loss = log_pi + self.tf_lognormal(flat_z_true, mu, log_sigma)
 			z_loss = -K.log(K.sum(K.exp(z_loss), 1, keepdims=True))
 
-			z_loss = K.mean(z_loss) # mean over rollout length and z dim
+			z_loss = K.mean(z_loss) 
 
 			return z_loss
 
@@ -99,25 +101,12 @@ class RNN():
 
 			return rew_loss
 
-		# def rnn_done_loss(y_true, y_pred):
-		# 	z_true, rew_true = self.get_responses(y_true) #, done_true
-
-		# 	d = GAUSSIAN_MIXTURES * Z_DIM
-		# 	done_pred = y_pred[:,:,(3*d+1):]
-		
-		# 	done_loss = K.binary_crossentropy(done_true, done_pred)
-		# 	done_loss = K.mean(done_loss)
-
-		#	return RESTART_FACTOR * done_loss
-
-
 		def rnn_loss(y_true, y_pred):
 
 			z_loss = rnn_z_loss(y_true, y_pred)
 			rew_loss = rnn_rew_loss(y_true, y_pred)
-			#done_loss = rnn_done_loss(y_true, y_pred)
 
-			return Z_FACTOR * z_loss + REWARD_FACTOR * rew_loss # + done_loss  #+ rnn_kl_loss(y_true, y_pred)
+			return Z_FACTOR * z_loss + REWARD_FACTOR * rew_loss
 
 		opti = Adam(lr=LEARNING_RATE)
 		model.compile(loss=rnn_loss, optimizer=opti, metrics = [rnn_z_loss, rnn_rew_loss]) #, rnn_done_loss
@@ -151,7 +140,7 @@ class RNN():
 	def get_mixture_coef(self, z_pred):
 
 		log_pi, mu, log_sigma = tf.split(z_pred, 3, 1)
-		log_pi = log_pi - K.log(K.sum(K.exp(log_pi), axis = 1, keepdims = True))
+		log_pi = log_pi - K.log(K.sum(K.exp(log_pi), axis = 1, keepdims = True)) # axis 1 is the mixture axis
 
 		return log_pi, mu, log_sigma
 
