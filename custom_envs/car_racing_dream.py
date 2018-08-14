@@ -17,6 +17,8 @@ from pyglet import gl
 import tensorflow as tf
 import keras.backend as K
 
+from model import make_model
+
 
 FPS = 50
 
@@ -123,12 +125,12 @@ class CarRacingDream(gym.Env):
         new_h = out[1][0]
         new_c = out[2][0]
 
-        z_pred = y_pred[:(3*d)]
+        mdn_pred = y_pred[:(3*d)]
         rew_pred = y_pred[-1]
         
-        z_pred = np.reshape(z_pred, [-1, GAUSSIAN_MIXTURES * 3])
+        mdn_pred = np.reshape(mdn_pred, [-1, GAUSSIAN_MIXTURES * 3])
 
-        log_pi, mu, log_sigma = self.get_mixture_coef(z_pred)
+        log_pi, mu, log_sigma = self.get_mixture_coef(mdn_pred)
 
         chosen_log_pi = np.zeros(z_dim)
         chosen_mu = np.zeros(z_dim)
@@ -225,7 +227,11 @@ if __name__=="__main__":
         if k==key.RIGHT and a[0]==+1.0: a[0] = 0
         if k==key.UP:    a[1] = 0
         if k==key.DOWN:  a[2] = 0
-    env = CarRacingDream()
+
+
+    dream_model = make_model()
+
+    env = CarRacingDream(dream_model)
     env.render()
     record_video = False
     if record_video:

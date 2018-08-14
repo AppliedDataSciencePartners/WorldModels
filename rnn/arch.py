@@ -65,8 +65,6 @@ class RNN():
 
 		forward = Model([rnn_x] + [state_input_h, state_input_c], [mdn_forward, state_h, state_c])
 
-		full_model = 
-
 		#### LOSS FUNCTION
 
 		def rnn_z_loss(y_true, y_pred):
