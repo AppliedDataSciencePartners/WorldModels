@@ -75,7 +75,7 @@ def main(args):
   for epoch in range(epochs):
     print('EPOCH ' + str(epoch))
     vae.train(data)
-    vae.model.save_weights('./vae/weights.h5')
+    vae.save_weights('./vae/weights.h5')
 
   
 
