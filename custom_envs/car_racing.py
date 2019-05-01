@@ -71,7 +71,7 @@ WINDOW_H = 1000
 
 SCALE       = 6.0        # Track scale
 TRACK_RAD   = 900/SCALE  # Track is heavily morphed circle with this radius
-PLAYFIELD   = 1600/SCALE # Game over boundary
+PLAYFIELD   = 3000/SCALE # Game over boundary
 FPS         = 50
 ZOOM        = 2.7        # Camera zoom
 ZOOM_FOLLOW = True       # Set to False for fixed view (don't use zoom)
@@ -139,7 +139,7 @@ class CarRacing(gym.Env):
         self.reward = 0.0
         self.prev_reward = 0.0
 
-        self.action_space = spaces.Box( np.array([-1,0,0]), np.array([+1,+1,+1]))  # steer, gas, brake
+        self.action_space = spaces.Box( np.array([-1,0,0]), np.array([+1,+1,+1]), dtype = np.float32)  # steer, gas, brake
         self.observation_space = spaces.Box(low=0, high=255, shape=(STATE_H, STATE_W, 3), dtype=np.uint8)
 
     def seed(self, seed=None):
@@ -315,6 +315,7 @@ class CarRacing(gym.Env):
         return self.step(None)[0]
 
     def step(self, action):
+        # print(self.t * FPS)
         if action is not None:
             self.car.steer(-action[0])
             self.car.gas(action[1])

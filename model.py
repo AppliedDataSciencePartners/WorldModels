@@ -20,11 +20,12 @@ from rnn.arch import RNN
 from controller.arch import Controller
 
 final_mode = False
-render_mode = True
+render_mode = False
 generate_data_mode = False
+dream_mode = False
 RENDER_DELAY = False
 record_video = False
-MEAN_MODE = False
+ADD_NOISE = False
 
 def make_model():
 
@@ -87,14 +88,14 @@ class Model:
 
     self.render_mode = False
 
-  def make_env(self, env_name, seed=-1, render_mode=False):
+  def make_env(self, env_name, seed=-1, render_mode=False, model = None):
     self.render_mode = render_mode
     self.env_name = env_name
-    self.env = make_env(env_name, seed=seed, render_mode=render_mode)
+    self.env = make_env(env_name, seed=seed, render_mode=render_mode, model = model)
 
 
-  def get_action(self, x, t=0, mean_mode=False):
-    # if mean_mode = True, ignore sampling.
+  def get_action(self, x, t=0, add_noise=False):
+    # if add_noise = True, ignore sampling.
     h = np.array(x).flatten()
     if self.time_input == 1:
       time_signal = float(t) / self.time_factor
@@ -104,7 +105,7 @@ class Model:
       w = self.weight[i]
       b = self.bias[i]
       h = np.matmul(h, w) + b
-      if (self.output_noise[i] and (not mean_mode)):
+      if (self.output_noise[i] and add_noise):
         out_size = self.shapes[i][1]
         out_std = self.bias_std[i]
         output_noise = np.random.randn(out_size)*out_std
@@ -153,18 +154,18 @@ class Model:
     self.cell_values = np.zeros(self.rnn.hidden_units) 
 
   def update(self, obs, t):
-    vae_encoded_obs = self.vae.encoder.predict(np.array([obs]))[0]
-    return vae_encoded_obs
+    if obs.shape == self.vae.input_dim:
+      return self.vae.encoder.predict(np.array([obs]))[0]
+    else:
+      return obs
 
-def evaluate(model):
-  # run 100 times and average score, according to the reles.
-  model.env.seed(0)
-  total_reward = 0.0
-  N = 100
-  for i in range(N):
-    reward, t = simulate(model, train_mode=False, render_mode=False, num_episode=1)
-    total_reward += reward[0]
-  return (total_reward / float(N))
+def evaluate(model, num_episode, max_len):
+
+  reward, t = simulate(model, num_episode=num_episode, max_len=max_len)
+
+  total_reward = np.mean(reward)
+
+  return reward, total_reward
 
 def compress_input_dct(obs):
   new_obs = np.zeros((8, 8))
@@ -174,12 +175,12 @@ def compress_input_dct(obs):
   return new_obs.flatten()
 
 
-def simulate(model, train_mode=False, render_mode=True, num_episode=5, seed=-1, max_len=-1, generate_data_mode = False):
+def simulate(model, num_episode=5, seed=-1, max_len=-1, generate_data_mode = False, render_mode = False):
 
   reward_list = []
   t_list = []
 
-  max_episode_length = 3000
+  max_episode_length = 1000
 
   if max_len > 0:
     if max_len < max_episode_length:
@@ -195,40 +196,54 @@ def simulate(model, train_mode=False, render_mode=True, num_episode=5, seed=-1, 
     model.reset()
 
     obs = model.env.reset()
-    obs = config.adjust_obs(obs)
-    action = model.env.action_space.sample()
+    reward = 0
+    action = np.array([0,0,0])
 
-    model.env.render("human")
 
     if obs is None:
       obs = np.zeros(model.input_size)
 
     total_reward = 0.0
+    
+
+    model.env.render("rgb_array")
 
     for t in range(max_episode_length):
+
+      if obs.shape == model.vae.input_dim: ### running in real environment
+        obs = config.adjust_obs(obs)
+        reward = config.adjust_reward(reward)
 
       if render_mode:
         model.env.render("human")
         if RENDER_DELAY:
-          time.sleep(0.01)
+          time.sleep(0.1)
+      # else:
+      #   model.env.render('rgb_array')
 
       vae_encoded_obs = model.update(obs, t)
+
+    
+      input_to_rnn = [np.array([[np.concatenate([vae_encoded_obs, action, [reward]])]]),np.array([model.hidden]),np.array([model.cell_values])]
+
+      out = model.rnn.forward.predict(input_to_rnn)
+
+      y_pred = out[0][0][0]
+      model.hidden = out[1][0]
+      model.cell_values = out[2][0]
+
       controller_obs = np.concatenate([vae_encoded_obs,model.hidden])
 
       if generate_data_mode:
-        action = config.generate_data_action(t=t, current_action = action)
-      elif MEAN_MODE:
-        action = model.get_action(controller_obs, t=t, mean_mode=(not train_mode))
+        action = config.generate_data_action(t=t, env = model.env)
       else:
-        action = model.get_action(controller_obs, t=t, mean_mode=False)
+        action = model.get_action(controller_obs, t=t, add_noise=ADD_NOISE)
+
+
+      # print(action)
+      # action = [-0.1,1,0]
 
       obs, reward, done, info = model.env.step(action)
-      obs = config.adjust_obs(obs)
-
-      input_to_rnn = [np.array([[np.concatenate([vae_encoded_obs, action])]]),np.array([model.hidden]),np.array([model.cell_values])]
-      h, c = model.rnn.forward.predict(input_to_rnn)
-      model.hidden = h[0]
-      model.cell_values = c[0]
 
       total_reward += reward
 
@@ -253,6 +268,7 @@ def main(args):
   the_seed = args.seed
   final_mode = args.final_mode
   generate_data_mode = args.generate_data_mode
+  dream_mode = args.dream_mode
   render_mode = args.render_mode
   record_video = args.record_video
   max_length = args.max_length
@@ -266,7 +282,11 @@ def main(args):
   model = make_model()
   print('model size', model.param_count)
 
-  model.make_env(env_name, render_mode=render_mode)
+  if dream_mode:
+    dream_model = make_model()
+    model.make_env(env_name + '_dream', render_mode=render_mode, model = dream_model)
+  else:
+    model.make_env(env_name, render_mode=render_mode)
 
   if len(filename) > 0:
     model.load_model(filename)
@@ -281,15 +301,15 @@ def main(args):
 
     for i in range(100):
 
-      reward, steps_taken = simulate(model, train_mode=False, render_mode=False, num_episode=1, max_len = max_length, generate_data_mode = False)
+      reward, steps_taken = simulate(model, num_episode=1, max_len = max_length, generate_data_mode = False)
       total_reward += reward[0]
       print("episode" , i, "reward =", reward[0])
     print("seed", the_seed, "average_reward", total_reward/100)
   else:
     if record_video:
       model.env = Monitor(model.env, directory='./videos',video_callable=lambda episode_id: True, write_upon_reset=True, force=True)
-    while(5):
-      reward, steps_taken = simulate(model, train_mode=False, render_mode=render_mode, num_episode=1, max_len = max_length, generate_data_mode = generate_data_mode)
+    while(1):
+      reward, steps_taken = simulate(model, render_mode=render_mode, num_episode=1, max_len = max_length, generate_data_mode = generate_data_mode)
       print ("terminal reward", reward, "average steps taken", np.mean(steps_taken)+1)
       #break
 
@@ -300,6 +320,7 @@ if __name__ == "__main__":
   parser.add_argument('--seed', type = int, default = 111, help='which seed?')
   parser.add_argument('--final_mode', action='store_true', help='select this to test a given controller over 100 trials')
   parser.add_argument('--generate_data_mode', action='store_true', help='uses the pick_random_action function from config')
+  parser.add_argument('--dream_mode', action='store_true', help='run the model in the dreams of the agent')
   parser.add_argument('--render_mode', action='store_true', help='render the run')
   parser.add_argument('--record_video', action='store_true', help='record the run to ./videos')
   parser.add_argument('--max_length', type = int, default = -1, help='max_length of an episode')

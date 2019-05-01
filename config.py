@@ -1,30 +1,48 @@
 import numpy as np
 import random
 
-def generate_data_action(t, current_action):
-#     a = env.action_space.sample()
-#     return a
-    if t < 60:
-        return np.array([0,1,0])
-    
-    if t % 5 > 0:
-        return current_action
+train_envs = ['car_racing']
+test_envs = ['car_racing']
 
-    rn = random.randint(0,9)
-    if rn in [0]:
-        return np.array([0,0,0])
-    if rn in [1,2,3,4]:
-        return np.array([0,random.random(),0])
-    if rn in [5,6,7]:
-        return np.array([-random.random(),0,0])
-    if rn in [8]:
-        return np.array([random.random(),0,0])
-    if rn in [9]:
-        return np.array([0,0,random.random()])
+def generate_data_action(t, env):
+
+    a = env.action_space.sample()
+
+
+    # if t < 20:
+    #     a = np.array([-0.1,1,0])
+
+    # else:  
+    #     a = env.action_space.sample()
+
+    #     rn = random.randint(0,9)
+
+    #     if rn in [0]:
+    #         a = np.array([0,0,0])
+    #     elif rn in [1,2,3,4]:
+    #         a = np.array([0,random.random(),0])
+    #     elif rn in [5,6]:
+    #         a = np.array([-random.random(),0,0])
+    #     elif rn in [7,8]:
+    #         a = np.array([random.random(),0,0])
+    #     elif rn in [9]:
+    #         a = np.array([0,0,random.random()])
+    #     else:
+    #         pass
+
+    return a
 
 
 def adjust_obs(obs):
+    # obs[obs==0] = 255
+    
     return obs.astype('float32') / 255.
+    
 
-train_envs = ['car_racing']
-test_envs = ['car_racing']
+def adjust_reward(reward):
+    if reward > 0:
+        reward = 1
+    else:
+        reward = 0
+    return reward
+    
