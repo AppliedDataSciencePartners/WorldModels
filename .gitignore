@@ -13,3 +13,5 @@ history.txt
 # rnn/weights.h5
 
 copy_files.sh
+
+*.pyc
