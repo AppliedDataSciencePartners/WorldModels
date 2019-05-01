@@ -36,26 +36,29 @@ def random_batch(filelist, batch_size):
 	done_list = []
 
 	for i in indices:
-		new_data = np.load(SERIES_DIR_NAME + filelist[i])
+		try:
+			new_data = np.load(SERIES_DIR_NAME + filelist[i])
 
-		mu = new_data['mu']
-		log_var = new_data['log_var']
-		action = new_data['action']
-		reward = new_data['reward']
-		done = new_data['done']
+			mu = new_data['mu']
+			log_var = new_data['log_var']
+			action = new_data['action']
+			reward = new_data['reward']
+			done = new_data['done']
 
-		reward = np.expand_dims(reward, axis=2)
-		done = np.expand_dims(done, axis=2)
+			reward = np.expand_dims(reward, axis=2)
+			done = np.expand_dims(done, axis=2)
 
 
-		s = log_var.shape
+			s = log_var.shape
 
-		z = mu + np.exp(log_var/2.0) * np.random.randn(*s)
+			z = mu + np.exp(log_var/2.0) * np.random.randn(*s)
 
-		z_list.append(z)
-		action_list.append(action)
-		rew_list.append(reward)
-		done_list.append(done)
+			z_list.append(z)
+			action_list.append(action)
+			rew_list.append(reward)
+			done_list.append(done)
+		except:
+			pass
 
 	z_list = np.array(z_list)
 	action_list = np.array(action_list)

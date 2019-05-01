@@ -1,17 +1,13 @@
 __pycache__/
 .ipynb_checkpoints/
 archive/
-zoo/
 videos/
 data/
-data/rollout/
-data/series/
-data/run_1/
-data/archive/
-history.txt
-# vae/weights.h5
-# rnn/weights.h5
+vae/weights.h5
+rnn/weights.h5
+log/
 
 copy_files.sh
 
 *.pyc
+.DS_Store
