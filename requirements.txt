@@ -2,7 +2,7 @@ absl-py==0.1.13
 appnope==0.1.0
 astor==0.6.2
 backcall==0.1.0
-bleach==1.5.0
+bleach==3.1.1
 box2d-py==2.3.8
 certifi==2018.1.18
 cffi==1.11.5
