@@ -1,13 +1,13 @@
 import math
 import numpy as np
 
-from keras.layers import Input, LSTM, Dense
-from keras.models import Model
-from keras import backend as K
-from keras.callbacks import EarlyStopping
+from tensorflow.keras.layers import Input, LSTM, Dense
+from tensorflow.keras.models import Model
+from tensorflow.keras import backend as K
+from tensorflow.keras.callbacks import EarlyStopping
 
-from keras import losses
-from keras.optimizers import Adam
+from tensorflow.keras import losses
+from tensorflow.keras.optimizers import Adam
 
 import tensorflow as tf
 

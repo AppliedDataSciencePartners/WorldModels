@@ -36,7 +36,7 @@ def encode_episode(vae, episode):
     done = done.astype(int)  
     reward = np.where(reward>0, 1, 0) * np.where(done==0, 1, 0)
 
-    mu, log_var = vae.encoder_mu_log_var.predict(obs)
+    mu, log_var, _ = vae.encoder.predict(obs)
     
     initial_mu = mu[0, :]
     initial_log_var = log_var[0, :]
@@ -53,7 +53,8 @@ def main(args):
 
     try:
       vae.set_weights('./vae/weights.h5')
-    except:
+    except Exception as e:
+      print(e)
       print("./vae/weights.h5 does not exist - ensure you have run 02_train_vae.py first")
       raise
 
@@ -81,7 +82,8 @@ def main(args):
         if file_count%50==0:
           print('Encoded {} / {} episodes'.format(file_count, N))
 
-      except:
+      except Exception as e:
+        print(e)
         print('Skipped {}...'.format(file))
 
     print('Encoded {} / {} episodes'.format(file_count, N))

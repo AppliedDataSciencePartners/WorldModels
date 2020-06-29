@@ -155,7 +155,7 @@ class Model:
 
   def update(self, obs, t):
     if obs.shape == self.vae.input_dim:
-      return self.vae.encoder.predict(np.array([obs]))[0]
+      return self.vae.encoder.predict(np.array([obs]))[2][0]
     else:
       return obs
 
@@ -223,7 +223,6 @@ def simulate(model, num_episode=5, seed=-1, max_len=-1, generate_data_mode = Fal
 
       vae_encoded_obs = model.update(obs, t)
 
-    
       input_to_rnn = [np.array([[np.concatenate([vae_encoded_obs, action, [reward]])]]),np.array([model.hidden]),np.array([model.cell_values])]
 
       out = model.rnn.forward.predict(input_to_rnn)

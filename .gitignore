@@ -3,6 +3,9 @@ __pycache__/
 archive/
 videos/
 data/*/*.npz
+*.npz
+*.pk
+*best.json
 vae/*.h5
 rnn/*.h5
 vae/*.json

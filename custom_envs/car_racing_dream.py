@@ -15,7 +15,7 @@ import pyglet
 from pyglet import gl
 
 import tensorflow as tf
-import keras.backend as K
+import tensorflow.keras.backend as K
 
 from model import make_model
 

@@ -7,12 +7,12 @@ import config
 import os
 
 DIR_NAME = './data/rollout/'
-M = 300
+
 SCREEN_SIZE_X = 64
 SCREEN_SIZE_Y = 64
 
 
-def import_data(N):
+def import_data(N, M):
   filelist = os.listdir(DIR_NAME)
   filelist = [x for x in filelist if x != '.DS_Store']
   filelist.sort()
@@ -40,7 +40,8 @@ def import_data(N):
 
         if file_count%50==0:
           print('Imported {} / {} ::: Current data size = {} observations'.format(file_count, N, idx))
-      except:
+      except Exception as e:
+        print(e)
         print('Skipped {}...'.format(file))
 
   print('Imported {} / {} ::: Current data size = {} observations'.format(file_count, N, idx))
@@ -53,6 +54,7 @@ def main(args):
 
   new_model = args.new_model
   N = int(args.N)
+  M = int(args.time_steps)
   epochs = int(args.epochs)
 
   vae = VAE()
@@ -65,7 +67,7 @@ def main(args):
       raise
 
   try:
-    data, N = import_data(N)
+    data, N = import_data(N, M)
   except:
     print('NO DATA FOUND')
     raise
@@ -74,8 +76,9 @@ def main(args):
 
   for epoch in range(epochs):
     print('EPOCH ' + str(epoch))
-    vae.train(data)
     vae.save_weights('./vae/weights.h5')
+    vae.train(data)
+    
 
   
 
@@ -86,6 +89,8 @@ if __name__ == "__main__":
   parser = argparse.ArgumentParser(description=('Train VAE'))
   parser.add_argument('--N',default = 10000, help='number of episodes to use to train')
   parser.add_argument('--new_model', action='store_true', help='start a new model from scratch?')
+  parser.add_argument('--time_steps', type=int, default=300,
+                        help='how many timesteps at start of episode?')
   parser.add_argument('--epochs', default = 10, help='number of epochs to train for')
   args = parser.parse_args()
 

@@ -12,7 +12,7 @@ SERIES_DIR_NAME = './data/series/'
 
 def get_filelist(N):
     filelist = os.listdir(SERIES_DIR_NAME)
-    filelist = [x for x in filelist if x != '.DS_Store']
+    filelist = [x for x in filelist if (x != '.DS_Store' and x!='.gitignore')]
     filelist.sort()
     length_filelist = len(filelist)
 
@@ -37,7 +37,9 @@ def random_batch(filelist, batch_size):
 
 	for i in indices:
 		try:
-			new_data = np.load(SERIES_DIR_NAME + filelist[i])
+			new_data = np.load(SERIES_DIR_NAME + filelist[i], allow_pickle=True)
+
+			
 
 			mu = new_data['mu']
 			log_var = new_data['log_var']
@@ -45,9 +47,8 @@ def random_batch(filelist, batch_size):
 			reward = new_data['reward']
 			done = new_data['done']
 
-			reward = np.expand_dims(reward, axis=2)
-			done = np.expand_dims(done, axis=2)
-
+			reward = np.expand_dims(reward, axis=1)
+			done = np.expand_dims(done, axis=1)
 
 			s = log_var.shape
 
@@ -57,8 +58,11 @@ def random_batch(filelist, batch_size):
 			action_list.append(action)
 			rew_list.append(reward)
 			done_list.append(done)
-		except:
-			pass
+
+		except Exception as e:
+			print(e)
+
+			
 
 	z_list = np.array(z_list)
 	action_list = np.array(action_list)
@@ -91,6 +95,8 @@ def main(args):
 		print('STEP ' + str(step))
 
 		z, action, rew ,done = random_batch(filelist, batch_size)
+
+		
 
 		rnn_input = np.concatenate([z[:, :-1, :], action[:, :-1, :], rew[:, :-1, :]], axis = 2)
 		rnn_output = np.concatenate([z[:, 1:, :], rew[:, 1:, :]], axis = 2) #, done[:, 1:, :]

@@ -1,9 +1,11 @@
 import numpy as np
 
-from keras.layers import Input, Conv2D, Flatten, Dense, Conv2DTranspose, Lambda, Reshape
-from keras.models import Model
-from keras.optimizers import Adam
-from keras import backend as K
+import tensorflow as tf
+
+from tensorflow.keras.layers import Input, Conv2D, Flatten, Dense, Conv2DTranspose, Lambda, Reshape, Layer
+from tensorflow.keras.models import Model
+from tensorflow.keras.optimizers import Adam
+from tensorflow.keras import backend as K
 
 INPUT_DIM = (64,64,3)
 
@@ -25,21 +27,57 @@ BATCH_SIZE = 100
 LEARNING_RATE = 0.0001
 KL_TOLERANCE = 0.5
 
-def sampling(args):
-    z_mean, z_sigma = args
-    epsilon = K.random_normal(shape=K.shape(z_sigma), mean=0.,stddev=1.)
-    return z_mean + z_sigma * epsilon
 
-def convert_to_sigma(z_log_var):
-    return K.exp(z_log_var / 2)
+
+
+class Sampling(Layer):
+    def call(self, inputs):
+        mu, log_var = inputs
+        epsilon = K.random_normal(shape=K.shape(mu), mean=0., stddev=1.)
+        return mu + K.exp(log_var / 2) * epsilon
+
+
+class VAEModel(Model):
+    def __init__(self, encoder, decoder, r_loss_factor, **kwargs):
+        super(VAEModel, self).__init__(**kwargs)
+        self.encoder = encoder
+        self.decoder = decoder
+        self.r_loss_factor = r_loss_factor
+
+    def train_step(self, data):
+        if isinstance(data, tuple):
+            data = data[0]
+        with tf.GradientTape() as tape:
+            z_mean, z_log_var, z = self.encoder(data)
+            reconstruction = self.decoder(z)
+            reconstruction_loss = tf.reduce_mean(
+                tf.square(data - reconstruction), axis = [1,2,3]
+            )
+            reconstruction_loss *= self.r_loss_factor
+            kl_loss = 1 + z_log_var - tf.square(z_mean) - tf.exp(z_log_var)
+            kl_loss = tf.reduce_sum(kl_loss, axis = 1)
+            kl_loss *= -0.5
+            total_loss = reconstruction_loss + kl_loss
+        grads = tape.gradient(total_loss, self.trainable_weights)
+        self.optimizer.apply_gradients(zip(grads, self.trainable_weights))
+        return {
+            "loss": total_loss,
+            "reconstruction_loss": reconstruction_loss,
+            "kl_loss": kl_loss,
+        }
+    
+    def call(self,inputs):
+        latent = self.encoder(inputs)
+        return self.decoder(latent)
+
+
 
 class VAE():
     def __init__(self):
         self.models = self._build()
         self.full_model = self.models[0]
         self.encoder = self.models[1]
-        self.encoder_mu_log_var = self.models[2]
-        self.decoder = self.models[3]
+        self.decoder = self.models[2]
 
         self.input_dim = INPUT_DIM
         self.z_dim = Z_DIM
@@ -57,67 +95,33 @@ class VAE():
 
         vae_z_mean = Dense(Z_DIM, name='mu')(vae_z_in)
         vae_z_log_var = Dense(Z_DIM, name='log_var')(vae_z_in)
-        vae_z_sigma = Lambda(convert_to_sigma, name='sigma')(vae_z_log_var)
 
-        vae_z = Lambda(sampling, name='z')([vae_z_mean, vae_z_sigma])
+        vae_z = Sampling(name='z')([vae_z_mean, vae_z_log_var])
         
+
+        #### DECODER: 
         vae_z_input = Input(shape=(Z_DIM,), name='z_input')
 
-        #### DECODER: we instantiate these layers separately so as to reuse them later
-        vae_dense = Dense(1024, name='dense_layer')
-        vae_z_out = Reshape((1,1,DENSE_SIZE), name='unflatten')
-        vae_d1 = Conv2DTranspose(filters = CONV_T_FILTERS[0], kernel_size = CONV_T_KERNEL_SIZES[0] , strides = CONV_T_STRIDES[0], activation=CONV_T_ACTIVATIONS[0], name='deconv_layer_1')
-        vae_d2 = Conv2DTranspose(filters = CONV_T_FILTERS[1], kernel_size = CONV_T_KERNEL_SIZES[1] , strides = CONV_T_STRIDES[1], activation=CONV_T_ACTIVATIONS[1], name='deconv_layer_2')
-        vae_d3 = Conv2DTranspose(filters = CONV_T_FILTERS[2], kernel_size = CONV_T_KERNEL_SIZES[2] , strides = CONV_T_STRIDES[2], activation=CONV_T_ACTIVATIONS[2], name='deconv_layer_3')
-        vae_d4 = Conv2DTranspose(filters = CONV_T_FILTERS[3], kernel_size = CONV_T_KERNEL_SIZES[3] , strides = CONV_T_STRIDES[3], activation=CONV_T_ACTIVATIONS[3], name='deconv_layer_4')
+        vae_dense = Dense(1024, name='dense_layer')(vae_z_input)
+        vae_unflatten = Reshape((1,1,DENSE_SIZE), name='unflatten')(vae_dense)
+        vae_d1 = Conv2DTranspose(filters = CONV_T_FILTERS[0], kernel_size = CONV_T_KERNEL_SIZES[0] , strides = CONV_T_STRIDES[0], activation=CONV_T_ACTIVATIONS[0], name='deconv_layer_1')(vae_unflatten)
+        vae_d2 = Conv2DTranspose(filters = CONV_T_FILTERS[1], kernel_size = CONV_T_KERNEL_SIZES[1] , strides = CONV_T_STRIDES[1], activation=CONV_T_ACTIVATIONS[1], name='deconv_layer_2')(vae_d1)
+        vae_d3 = Conv2DTranspose(filters = CONV_T_FILTERS[2], kernel_size = CONV_T_KERNEL_SIZES[2] , strides = CONV_T_STRIDES[2], activation=CONV_T_ACTIVATIONS[2], name='deconv_layer_3')(vae_d2)
+        vae_d4 = Conv2DTranspose(filters = CONV_T_FILTERS[3], kernel_size = CONV_T_KERNEL_SIZES[3] , strides = CONV_T_STRIDES[3], activation=CONV_T_ACTIVATIONS[3], name='deconv_layer_4')(vae_d3)
         
-        #### DECODER IN FULL MODEL
-        vae_dense_model = vae_dense(vae_z)
-        vae_z_out_model = vae_z_out(vae_dense_model)
-
-        vae_d1_model = vae_d1(vae_z_out_model)
-        vae_d2_model = vae_d2(vae_d1_model)
-        vae_d3_model = vae_d3(vae_d2_model)
-        vae_d4_model = vae_d4(vae_d3_model)
-
-        #### DECODER ONLY
-        vae_dense_decoder = vae_dense(vae_z_input)
-        vae_z_out_decoder = vae_z_out(vae_dense_decoder)
-
-        vae_d1_decoder = vae_d1(vae_z_out_decoder)
-        vae_d2_decoder = vae_d2(vae_d1_decoder)
-        vae_d3_decoder = vae_d3(vae_d2_decoder)
-        vae_d4_decoder = vae_d4(vae_d3_decoder)
 
         #### MODELS
 
-        vae_full = Model(vae_x, vae_d4_model)
-        vae_encoder = Model(vae_x, vae_z)
-        vae_encoder_mu_log_var = Model(vae_x, (vae_z_mean, vae_z_log_var))
-        vae_decoder = Model(vae_z_input, vae_d4_decoder)
+    
+        vae_encoder = Model(vae_x, [vae_z_mean, vae_z_log_var, vae_z], name = 'encoder')
+        vae_decoder = Model(vae_z_input, vae_d4, name = 'decoder')
 
-        def vae_r_loss(y_true, y_pred):
-            ######## y_true.shape = (batch size, 3, 64, 64)
+        vae_full = VAEModel(vae_encoder, vae_decoder, 1)
 
-            # y_true_flat = K.flatten(y_true)
-            # y_pred_flat = K.flatten(y_pred)
-
-            r_loss = K.sum(K.square(y_true - y_pred), axis = [1,2,3])
-            return r_loss
-
-        def vae_kl_loss(y_true, y_pred):
-
-            kl_loss = - 0.5 * K.sum(1 + vae_z_log_var - K.square(vae_z_mean) - K.exp(vae_z_log_var), axis = 1)
-            kl_loss = K.maximum(kl_loss, KL_TOLERANCE * Z_DIM)
-            return kl_loss
-
-        def vae_loss(y_true, y_pred):
-            return vae_r_loss(y_true, y_pred) + vae_kl_loss(y_true, y_pred)
-        
         opti = Adam(lr=LEARNING_RATE)
-        vae_full.compile(optimizer=opti, loss = vae_loss,  metrics = [vae_r_loss, vae_kl_loss])
-
-        return (vae_full,vae_encoder, vae_encoder_mu_log_var, vae_decoder)
+        vae_full.compile(optimizer=opti)
+        
+        return (vae_full,vae_encoder, vae_decoder)
 
     def set_weights(self, filepath):
         self.full_model.load_weights(filepath)
