@@ -78,7 +78,7 @@ Pympler==0.8
 pyparsing==2.4.7
 pyrsistent==0.15.7
 python-dateutil==2.8.1
-pyxdg==0.25
+pyxdg==0.26
 pyzmq==19.0.1
 qtconsole==4.6.0
 requests==2.24.0
