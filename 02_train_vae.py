@@ -80,11 +80,6 @@ def main(args):
     vae.train(data)
     
 
-  
-
-    
-    
-
 if __name__ == "__main__":
   parser = argparse.ArgumentParser(description=('Train VAE'))
   parser.add_argument('--N',default = 10000, help='number of episodes to use to train')
