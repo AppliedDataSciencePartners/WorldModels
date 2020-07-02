@@ -5,30 +5,30 @@ train_envs = ['car_racing']
 test_envs = ['car_racing']
 
 def generate_data_action(t, env):
+    #for the car racing example, it is important to give the car a 'push' early in the exploration so that it can find different examples of curved track.
+    if t < 20:
+        a = np.array([-0.1,1,0])
 
-    a = env.action_space.sample()
+    else:  
+        a = env.action_space.sample()
 
+        rn = random.randint(0,9)
 
-    # if t < 20:
-    #     a = np.array([-0.1,1,0])
+        if rn in [0]:
+            a = np.array([0,0,0])
+        elif rn in [1,2,3,4]:
+            a = np.array([0,random.random(),0])
+        elif rn in [5,6]:
+            a = np.array([-random.random(),0,0])
+        elif rn in [7,8]:
+            a = np.array([random.random(),0,0])
+        elif rn in [9]:
+            a = np.array([0,0,random.random()])
+        else:
+            pass
 
-    # else:  
-    #     a = env.action_space.sample()
-
-    #     rn = random.randint(0,9)
-
-    #     if rn in [0]:
-    #         a = np.array([0,0,0])
-    #     elif rn in [1,2,3,4]:
-    #         a = np.array([0,random.random(),0])
-    #     elif rn in [5,6]:
-    #         a = np.array([-random.random(),0,0])
-    #     elif rn in [7,8]:
-    #         a = np.array([random.random(),0,0])
-    #     elif rn in [9]:
-    #         a = np.array([0,0,random.random()])
-    #     else:
-    #         pass
+    #uncomment this line for truly random actions
+    #a = env.action_space.sample()
 
     return a
 
