@@ -116,7 +116,7 @@ class VAE():
         vae_encoder = Model(vae_x, [vae_z_mean, vae_z_log_var, vae_z], name = 'encoder')
         vae_decoder = Model(vae_z_input, vae_d4, name = 'decoder')
 
-        vae_full = VAEModel(vae_encoder, vae_decoder, 1)
+        vae_full = VAEModel(vae_encoder, vae_decoder, 10000)
 
         opti = Adam(lr=LEARNING_RATE)
         vae_full.compile(optimizer=opti)

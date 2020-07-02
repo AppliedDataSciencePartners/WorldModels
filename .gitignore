@@ -6,8 +6,7 @@ data/*/*.npz
 *.npz
 *.pk
 *best.json
-vae/*.h5
-rnn/*.h5
+*.h5
 vae/*.json
 rnn/*.json
 vae/*.png
