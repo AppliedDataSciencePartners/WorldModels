@@ -210,7 +210,7 @@ def worker(weights, seed, max_len, new_model):
   t = np.mean(t_list)
   return reward, t
 
-def slave():
+def follower():
 
   new_model = make_model()
   dream_model = make_model()
@@ -257,7 +257,7 @@ def slave():
     comm.Send(result_packet, dest=0)
 
 
-def send_packets_to_slaves(packet_list, current_env_name, dream_mode):
+def send_packets_to_followers(packet_list, current_env_name, dream_mode):
   num_worker = comm.Get_size()
   assert len(packet_list) == num_worker-1
   for i in range(1, num_worker):
@@ -266,7 +266,7 @@ def send_packets_to_slaves(packet_list, current_env_name, dream_mode):
     packet = {'result': packet, 'current_env_name': current_env_name, 'dream_mode': dream_mode}
     comm.send(packet, dest=i)
 
-def receive_packets_from_slaves():
+def receive_packets_from_followers():
   result_packet = np.empty(RESULT_PACKET_SIZE, dtype=np.int32)
 
   reward_list_total = np.zeros((population, 2))
@@ -302,9 +302,9 @@ def evaluate_batch(model_params, max_len):
   reward_list = np.zeros(population)
 
   for current_env_name in config.train_envs:
-    send_packets_to_slaves(packet_list, current_env_name, dream_mode = 0)
-    packets_from_slaves = receive_packets_from_slaves()
-    reward_list = packets_from_slaves[:, 0] # get rewards
+    send_packets_to_followers(packet_list, current_env_name, dream_mode = 0)
+    packets_from_followers = receive_packets_from_followers()
+    reward_list = packets_from_followers[:, 0] # get rewards
     overall_rewards.append(np.mean(reward_list))
     print(reward_list)
     print(overall_rewards)
@@ -312,7 +312,7 @@ def evaluate_batch(model_params, max_len):
   return np.mean(overall_rewards)
 
 
-def master():
+def leader():
 
   start_time = int(time.time())
   sprint("training", env_name)
@@ -366,14 +366,14 @@ def master():
     for current_env_name in config.train_envs:
       # print('before send packets')
       # tracker1 = SummaryTracker()
-      send_packets_to_slaves(packet_list, current_env_name, dream_mode)
+      send_packets_to_followers(packet_list, current_env_name, dream_mode)
       # print('between send and receive')
       # tracker1.print_diff()
-      packets_from_slaves = receive_packets_from_slaves()
+      packets_from_followers = receive_packets_from_followers()
       # print('after receive')
       # tracker1.print_diff()
-      reward_list = reward_list  + packets_from_slaves[:, 0]
-      time_list = time_list  + packets_from_slaves[:, 1]
+      reward_list = reward_list  + packets_from_followers[:, 0]
+      time_list = time_list  + packets_from_followers[:, 1]
       if len(config.train_envs) > 1:
         print('completed environment {} of {}'.format(e_num, len(config.train_envs)))
       e_num += 1
@@ -470,9 +470,9 @@ def main(args):
   sprint("process", rank, "out of total ", comm.Get_size(), "started")
 
   if (rank == 0):
-    master()
+    leader()
   else:
-    slave()
+    follower()
 
 def mpi_fork(n):
   """Re-launches the current script with workers
