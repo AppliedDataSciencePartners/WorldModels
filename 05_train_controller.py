@@ -1,4 +1,5 @@
 #python 05_train_controller.py car_racing -e 1 -n 4 -t 1 --max_length 1000
+#xvfb-run -a -s "-screen 0 1400x900x24" python 05_train_controller.py car_racing -n 4 -t 1 -e 1 --max_length 1000
 #python 05_train_controller.py car_racing -e 4 -n 8 -t 2 --max_length 1000
 #xvfb-run -a -s "-screen 0 1400x900x24" python 05_train_controller.py car_racing -n 16 -t 1 -e 4 --max_length 1000
 

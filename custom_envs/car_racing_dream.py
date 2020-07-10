@@ -1,9 +1,7 @@
 import sys, math
 import numpy as np
 
-from scipy.misc import imresize as resize
-from scipy.misc import toimage as toimage
-
+from PIL import Image
 import gym
 
 from gym import spaces
@@ -194,12 +192,10 @@ class CarRacingDream(gym.Env):
 
         img = self.model.vae.decoder.predict(np.array([self.z]))[0]
 
-        img = resize(img, (int(np.round(SCREEN_Y*FACTOR)), int(np.round(SCREEN_X*FACTOR))))
+        img = np.array(Image(img).resize(int(np.round(SCREEN_Y*FACTOR)), int(np.round(SCREEN_X*FACTOR))))
 
         if self.t > 0:
           pass
-          #toimage(img, cmin=0, cmax=255).save('output/'+str(self.t)+'.png')
-
         if mode == 'rgb_array':
           return img
 
