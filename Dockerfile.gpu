@@ -5,7 +5,7 @@
 FROM tensorflow/tensorflow:latest-gpu-py3-jupyter
 
 ## modify below
-ARG username=gdl
+ARG username=worldmodels
 ARG groupid=1000
 ARG userid=1000
 ## end modify
