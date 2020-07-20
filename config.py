@@ -14,15 +14,15 @@ def generate_data_action(t, env):
 
         rn = random.randint(0,9)
 
-        if rn in [0]:
+        if rn in [0]: #do nothing
             a = np.array([0,0,0])
-        elif rn in [1,2,3,4]:
+        elif rn in [1,2,3,4]: #accelerate
             a = np.array([0,random.random(),0])
-        elif rn in [5,6]:
+        elif rn in [5,6]: #left
             a = np.array([-random.random(),0,0])
-        elif rn in [7,8]:
+        elif rn in [7,8]: #right
             a = np.array([random.random(),0,0])
-        elif rn in [9]:
+        elif rn in [9]: #brake
             a = np.array([0,0,random.random()])
         else:
             pass

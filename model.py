@@ -9,6 +9,7 @@ import sys
 import time
 import importlib
 import argparse
+import time
 
 import config
 
@@ -167,12 +168,6 @@ def evaluate(model, num_episode, max_len):
 
   return reward, total_reward
 
-def compress_input_dct(obs):
-  new_obs = np.zeros((8, 8))
-  for i in range(obs.shape[2]):
-    new_obs = +compress_2d(obs[:, :, i] / 255., shape=(8, 8))
-  new_obs /= float(obs.shape[2])
-  return new_obs.flatten()
 
 
 def simulate(model, num_episode=5, seed=-1, max_len=-1, generate_data_mode = False, render_mode = False):
@@ -191,7 +186,12 @@ def simulate(model, num_episode=5, seed=-1, max_len=-1, generate_data_mode = Fal
     np.random.seed(seed)
     model.env.seed(seed)
 
+  avg_time = [0,0]
+  count_times = [0,0]
+
   for episode in range(num_episode):
+
+    # print(f'Episode {episode}')
 
     model.reset()
 
@@ -210,6 +210,7 @@ def simulate(model, num_episode=5, seed=-1, max_len=-1, generate_data_mode = Fal
 
     for t in range(max_episode_length):
 
+      # print(f'Timestep {t}')
       if obs.shape == model.vae.input_dim: ### running in real environment
         obs = config.adjust_obs(obs)
         reward = config.adjust_reward(reward)
@@ -224,9 +225,8 @@ def simulate(model, num_episode=5, seed=-1, max_len=-1, generate_data_mode = Fal
       vae_encoded_obs = model.update(obs, t)
 
       input_to_rnn = [np.array([[np.concatenate([vae_encoded_obs, action, [reward]])]]),np.array([model.hidden]),np.array([model.cell_values])]
-
+      start = time.process_time()
       out = model.rnn.forward.predict(input_to_rnn)
-
       y_pred = out[0][0][0]
       model.hidden = out[1][0]
       model.cell_values = out[2][0]
@@ -242,7 +242,19 @@ def simulate(model, num_episode=5, seed=-1, max_len=-1, generate_data_mode = Fal
       # print(action)
       # action = [-0.1,1,0]
 
-      obs, reward, done, info = model.env.step(action)
+      new_time = time.process_time() - start
+      avg_time[0] = ((avg_time[0] * count_times[0]) + new_time) / (count_times[0] + 1)
+      count_times[0] += 1
+      
+      start = time.process_time()
+
+      obs, reward, done, _ = model.env.step(action)
+
+      new_time = time.process_time() - start
+      avg_time[1] = ((avg_time[1] * count_times[1]) + new_time) / (count_times[1] + 1)
+      count_times[1] += 1
+
+      # print(avg_time)
 
       total_reward += reward
 

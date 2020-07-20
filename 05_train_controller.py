@@ -3,6 +3,9 @@
 #python 05_train_controller.py car_racing -e 4 -n 8 -t 2 --max_length 1000
 #xvfb-run -a -s "-screen 0 1400x900x24" python 05_train_controller.py car_racing -n 16 -t 1 -e 4 --max_length 1000
 
+#python 05_train_controller.py car_racing -e 4 -n 8 -t 2 --max_length 1000 --eval_steps 10 --dream_mode 1
+#xvfb-run -a -s "-screen 0 1400x900x24" python 05_train_controller.py car_racing -n 8 -t 2 -e 4 --max_length 1000
+
 from mpi4py import MPI
 import numpy as np
 import json
@@ -237,7 +240,8 @@ def follower():
       new_model.make_env(current_env_name)
 
 
-    for solution in solutions:
+    for i, solution in enumerate(solutions):
+      # print(f'working on solution {i+1} of {len(solutions)}')
       worker_id, jobidx, seed, max_len, weights = solution
       
       worker_id = int(worker_id)
@@ -331,6 +335,7 @@ def leader():
   filename_log = filebase+'.log.json'
   filename_hist = filebase+'.hist.json'
   filename_best = controller_filebase+'.best.json'
+  filename_current = controller_filebase+'.current.json'
   filename_es = controller_filebase+'.es.pk'
 
   t = 0
@@ -413,6 +418,10 @@ def leader():
     with open(filename_hist, 'wt') as out:
       res = json.dump(history, out, sort_keys=False, indent=0, separators=(',', ':'))
 
+    with open(filename_current, 'wt') as out:
+      current_model_params_quantized = np.array(es.current_param()).round(4).tolist()
+      json.dump([current_model_params_quantized, -1], out, sort_keys=True, indent=0, separators=(',', ': '))
+
     pickle.dump(es, open(filename_es, 'wb'))
 
     sprint(env_name, h)
@@ -427,7 +436,9 @@ def leader():
 
       prev_best_reward_eval = best_reward_eval
       model_params_quantized = np.array(es.current_param()).round(4)
-      reward_eval = evaluate_batch(model_params_quantized, max_len=-1)
+
+      reward_eval = evaluate_batch(model_params_quantized, max_len=max_length)
+      
       model_params_quantized = model_params_quantized.tolist()
       improvement = reward_eval - best_reward_eval
       eval_log.append([t, reward_eval, model_params_quantized])
@@ -436,13 +447,15 @@ def leader():
       if (len(eval_log) == 1 or reward_eval > best_reward_eval):
         best_reward_eval = reward_eval
         best_model_params_eval = model_params_quantized
+        with open(filename_best, 'wt') as out:
+          res = json.dump([best_model_params_eval, best_reward_eval], out, sort_keys=True, indent=0, separators=(',', ': '))
+
       else:
         if retrain_mode:
           sprint("reset to previous best params, where best_reward_eval =", best_reward_eval)
           es.set_mu(best_model_params_eval)
 
-      with open(filename_best, 'wt') as out:
-        res = json.dump([best_model_params_eval, best_reward_eval], out, sort_keys=True, indent=0, separators=(',', ': '))
+
       
       sprint("improvement", t, improvement, "curr", reward_eval, "prev", prev_best_reward_eval, "best", best_reward_eval)
 

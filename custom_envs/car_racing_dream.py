@@ -192,7 +192,12 @@ class CarRacingDream(gym.Env):
 
         img = self.model.vae.decoder.predict(np.array([self.z]))[0]
 
-        img = np.array(Image(img).resize(int(np.round(SCREEN_Y*FACTOR)), int(np.round(SCREEN_X*FACTOR))))
+        img = img * 255
+        img = img.astype(np.uint8)
+
+        new_size = (int(np.round(SCREEN_Y*FACTOR)), int(np.round(SCREEN_X*FACTOR)))
+
+        img = np.array(Image.fromarray(img).resize(new_size))
 
         if self.t > 0:
           pass

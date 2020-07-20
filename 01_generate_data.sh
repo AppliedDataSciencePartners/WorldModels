@@ -1,4 +1,4 @@
-# bash 01_generate_data.sh car_racing 8 125 300 0 5
+# bash 01_generate_data.sh car_racing 8 500 300 0 5
 
 for i in `seq 1 $2`;
 do

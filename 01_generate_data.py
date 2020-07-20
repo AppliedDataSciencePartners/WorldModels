@@ -1,4 +1,4 @@
-# xvfb-run -s "-screen 0 1400x900x24" python 01_generate_data.py car_racing --total_episodes 200 --time_steps 300
+# xvfb-run -s "-screen 0 1400x900x24" python 01_generate_data.py car_racing --total_episodes 4000 --time_steps 300
 
 import numpy as np
 import random
