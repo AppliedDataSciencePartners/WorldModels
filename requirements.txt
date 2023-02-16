@@ -66,6 +66,6 @@ tornado==6.0.4
 traitlets==4.3.3
 urllib3==1.25.9
 wcwidth==0.2.5
-Werkzeug==1.0.1
+Werkzeug==2.2.3
 wrapt==1.12.1
 zipp==3.1.0
